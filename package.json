@@ -1,18 +1,20 @@
 {
-  "name": "CryptoXD",
+  "name": "crypto-xd",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [],
-  "author": "",
+  "author": "Tabish Zaidi",
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
     "ccxt": "^1.42.96",
     "dotenv": "^8.2.0",
-    "mysql": "^2.18.1"
+    "mongo": "^0.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.22.0",
+    "eslint-config-google": "^0.14.0",
+    "prettier": "^2.2.1"
   }
 }
