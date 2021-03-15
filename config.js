@@ -1,6 +1,7 @@
 const config = {
     asset: 'HOT',
     base: 'USDT',
+    initialAmount: 10, // Total Base Asset (Dollars)
     startPrice: 0.006389,
     percentSpend: 0.5,
     spread: 0.2,
