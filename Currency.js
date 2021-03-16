@@ -1,4 +1,4 @@
-const ccxt = require("ccxt");
+const ccxt = require('ccxt');
 const axios = require('axios');
 
 const db = require('./db');
@@ -10,7 +10,7 @@ const exchange = new ccxt.binance({
 });
 
 class Currency {
-  constructor (crypto, base) {
+  constructor(crypto, base) {
     this.crypto = crypto;
     this.base = base;
     this.pair = `${crypto}/${base}`;
@@ -44,7 +44,7 @@ class Currency {
 
   // Test Functions
   async buy(price, amount) {
-    await db.newTrackOrder(this.pair, amount, price*amount);
+    await db.newTrackOrder(this.pair, amount, price * amount);
     this.log(`Placing order for ${this.pair} for ${price} (${amount})`);
     return await db.updateLedger(amount, 'buy');
   }
@@ -96,10 +96,10 @@ class Currency {
 
   async checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
-    const handle = setInterval( async () => {
+    const handle = setInterval(async () => {
       let order = await this.orderStatus(orderId);
       i++;
-      if (i>=intervals || order.status === 'closed') {
+      if (i >= intervals || order.status === 'closed') {
         clearInterval(handle);
         return order;
       }
@@ -109,7 +109,7 @@ class Currency {
   async orderStatus(orderId) {
     let order = await ccxt.fetchOrder(orderId);
     order = JSON.parse(order);
-    return(order.status);
+    return order.status;
   }
 
   async cancelOrder(orderId) {
@@ -122,8 +122,9 @@ class Currency {
    * @returns Array with market data as per config parameters
    */
   async getMarketData() {
-    const url = `${cfg.priceApiUrl}/klines?symbol=${this.crypto}${this.base}`
-        +`&interval=${cfg.evalTime}&limit=${cfg.evalLimit}`;
+    const url =
+      `${cfg.priceApiUrl}/klines?symbol=${this.crypto}${this.base}` +
+      `&interval=${cfg.evalTime}&limit=${cfg.evalLimit}`;
     const marketData = await axios.get(url);
     return JSON.parse(marketData);
   }
@@ -133,16 +134,18 @@ class Currency {
   }
 
   async getPrice() {
-    let info = await axios.get(`${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`);
+    let info = await axios.get(
+      `${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
+    );
     info = JSON.parse(info);
-    return(parseFloat(info.price));
+    return parseFloat(info.price);
   }
 
   /**
    * Adds or updates (if greater than current max price) Max Price for Currency
    * @param {Float} price new price of the crypto currency
    * @param {ObjectID} uid mongoDB document ID
-   * @returns 
+   * @returns
    */
   async updatePrice(price, uid) {
     const newPrice = await this.getPrice();
@@ -167,15 +170,12 @@ class Currency {
 
   /**
    * Simple log with timestamp
-   * @param {String} msg 
+   * @param {String} msg
    */
   log(msg) {
     console.log(new Date().getISOString(), msg);
   }
-
 }
-
-
 
 module.exports = {
   Currency,

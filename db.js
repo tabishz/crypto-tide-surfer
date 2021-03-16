@@ -1,4 +1,4 @@
-const {MongoClient} = require('mongodb');
+const { MongoClient } = require('mongodb');
 const cfg = require('./config');
 
 const mongo = new MongoClient(process.env.DB_URI);
@@ -12,7 +12,7 @@ const track = db.collection(cfg.db.track);
 
 // const createRecord
 const getOpenOrder = async () => {
-  const openOrder = await track.findOne({status: 'open'}, {timestamp: -1});
+  const openOrder = await track.findOne({ status: 'open' }, { timestamp: -1 });
   return openOrder;
 };
 
@@ -33,7 +33,7 @@ const newTrackOrder = async (pair, amount, price) => {
  * @returns Object with maxPrice if available
  */
 const getMaxPrice = async (uid) => {
-  return await track.findOne({_id: uid}, {maxPrice: 1});
+  return await track.findOne({ _id: uid }, { maxPrice: 1 });
 };
 
 /**
@@ -44,8 +44,8 @@ const getMaxPrice = async (uid) => {
  */
 const setMaxPrice = async (uid, price) => {
   const order = await this.getMaxPrice(uid);
-  if (!order.maxPrice || order.maxPrice<price) {
-    return await track.updateOne({_id: uid}, {maxPrice: price}, {upsert: true});
+  if (!order.maxPrice || order.maxPrice < price) {
+    return await track.updateOne({ _id: uid }, { maxPrice: price }, { upsert: true });
   } else {
     return false;
   }
@@ -56,11 +56,11 @@ const closeTrackOrder = async (uid) => {
     status: 'closed',
     closeTime: new Date(),
   };
-  return await track.updateOne({_id: uid}, data, {upsert: true});
+  return await track.updateOne({ _id: uid }, data, { upsert: true });
 };
 
 const updateOrder = async (orderId, newDoc) => {
-  await orders.deleteOne({id: orderId});
+  await orders.deleteOne({ id: orderId });
   const inserted = await orders.insertOne(newDoc);
   if (inserted) return true;
   return false;
