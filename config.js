@@ -1,13 +1,16 @@
 const config = {
     asset: 'HOT',
     base: 'USDT',
-    startPrice: 0.006389,
     percentSpend: 0.5,
-    spread: 0.2,
-    takeProfit: 1,
-    stopLoss: 2,
-    tickInterval: 5000,
-    evalTime: '5m'
+    initialStopLoss: 2, // Percentage
+    runningStopLoss: 1, // Percentage
+    tickInterval: 10000,
+    evalLimit: 3,
+    shortEvalTime: '1m',
+    shortChange: 0.25,
+    longEvalTime: '15m',
+    longChange: 0.5,
+    minChange: 0.0050
 }
 
 module.exports = config;
