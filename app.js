@@ -7,49 +7,19 @@ const Currency = require('./Currency');
 const cryptoCurrency = new Currency(cfg.crypto, cfg.base);
 
 const main = async () => {
-  var order;
   // Check if a previous open tracking order is in database
   const previousOrder = await cryptoCurrency.previousOpenOrder();
   if (previousOrder) {
     // if there is one, continue that progress
-    order = cryptoCurrency.orderStatus(previousOrder.id);
+    // Monitor price and decide when to sell
+    // 
   } else {
     // if not start a new follow
-    cData;
+    
   }
 };
 
-const followPrice = async () => {
-  var followHandle = setInterval(async () => {
-    const chart = await cryptoCurrency.getMarketData();
-    const buy = await evaluateChart(chart);
-    if (buy) {
-      clearInterval(followHandle);
-      return true;
-    }
-  }, cfg.followInterval);
-};
 
-const evaluateChart = async (data) => {
-  let avg = new Array();
-  let diff = new Array();
-  for (let i = 0; i < data.length; i++) {
-    avg[i] =
-      (parseFloat(data[i][1]) +
-        parseFloat(data[i][2]) +
-        parseFloat(data[i][3]) +
-        parseFloat(data[i][4])) /
-      4;
-    if (i !== 0) {
-      diff[i] = (avg[i] - avg[i - 1]) / avg[i];
-    }
-  }
-  if (diff[0] > 0 && diff[1] > 0 && diff[2] > 0) {
-    return true;
-  } else {
-    return false;
-  }
-};
 
 // OLD STUFF -- need to remove
 

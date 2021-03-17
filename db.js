@@ -43,12 +43,7 @@ const getMaxPrice = async (uid) => {
  * @returns Object of confirmation of update
  */
 const setMaxPrice = async (uid, price) => {
-  const order = await this.getMaxPrice(uid);
-  if (!order.maxPrice || order.maxPrice < price) {
-    return await track.updateOne({ _id: uid }, { maxPrice: price }, { upsert: true });
-  } else {
-    return false;
-  }
+  return await track.updateOne({ _id: uid }, { maxPrice: price }, { upsert: true });
 };
 
 const closeTrackOrder = async (uid) => {
@@ -59,6 +54,12 @@ const closeTrackOrder = async (uid) => {
   return await track.updateOne({ _id: uid }, data, { upsert: true });
 };
 
+/**
+ * updates an order in mongoDB by replacing old one
+ * @param {ObjectID} orderId 
+ * @param {Object} newDoc 
+ * @returns Boolean
+ */
 const updateOrder = async (orderId, newDoc) => {
   await orders.deleteOne({ id: orderId });
   const inserted = await orders.insertOne(newDoc);
@@ -74,6 +75,8 @@ const createOrder = async (newDoc) => {
 
 const updateLedger = async (amount, transaction) => {
   const data = {
+    crypto: this.crypto,
+    base: this.base,
     amount: amount,
     transaction: transaction,
     fees: cfg.exchange.fees * amount,

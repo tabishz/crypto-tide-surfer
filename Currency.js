@@ -14,6 +14,7 @@ class Currency {
     this.crypto = crypto;
     this.base = base;
     this.pair = `${crypto}/${base}`;
+    this.balance = {};
   }
 
   // async buy(price, amount) {
@@ -94,6 +95,21 @@ class Currency {
     }
   }
 
+  async getBalances() {
+    const balances = await exchange.fetchBalance();
+    this.balance.crypto = balances.free[this.crypto];
+    this.balance.base = balances.free[this.base];
+    return;
+  }
+
+  async decideAmount() {
+    if (!this.balance.base || this.balance.base < cfg.minAmount) return 0;
+    if (this.balance.base >= cfg.minAmount && this.balance.base <= cfg.maxAmount) {
+      return this.balance.base;
+    }
+    if (this.balance.base > cfg.maxAmount) return cfg.maxAmount;    
+  }
+
   async checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
     const handle = setInterval(async () => {
@@ -126,7 +142,7 @@ class Currency {
       `${cfg.priceApiUrl}/klines?symbol=${this.crypto}${this.base}` +
       `&interval=${cfg.evalTime}&limit=${cfg.evalLimit}`;
     const marketData = await axios.get(url);
-    return JSON.parse(marketData);
+    return marketData.data;
   }
 
   async previousOpenOrder() {
@@ -137,8 +153,9 @@ class Currency {
     let info = await axios.get(
       `${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
     );
-    info = JSON.parse(info);
-    return parseFloat(info.price);
+    info = JSON.parse(info.data);
+    this.price = parseFloat(info.price);
+    return this.price;
   }
 
   /**
@@ -174,6 +191,48 @@ class Currency {
    */
   log(msg) {
     console.log(new Date().getISOString(), msg);
+  }
+
+  /**
+   * Follows the price of the crypto pair and returns true if and when the change in price
+   * is above minimum price as specified in Config
+   * @returns true when conditions are met
+   */
+  async followPrice() {
+    var followHandle = setInterval(async () => {
+      const chart = await this.getMarketData();
+      const market = await this.evaluateChart(chart);
+      if (cfg.bothChangeSatisfy) {
+        // Both changes must be greater than their minimum required values
+        if (market.change > cfg.minChange && market.overallChange > cfg.minOverallChange) {
+          clearInterval(followHandle);
+          return true;
+        }
+      } else {
+        // Either of the changes must be greater than their minimum required values
+        if (market.change > cfg.minChange || market.overallChange > cfg.minOverallChange) {
+          clearInterval(followHandle);
+          return true;
+        }
+      }
+    }, cfg.followInterval);
+  }
+
+  /**
+   *
+   * @param {Array[]} data Market Price data to be evaluated for change
+   * @returns Object of change and overall change
+   */
+  async evaluateChart(data) {
+    let change = new Array();
+    for (let i = 0; i < data.length; i++) {
+      change[i] = (parseFloat(data[i][4]) - parseFloat(data[i][1])) / parseFloat(data[i][4]);
+    }
+    let difference = 0;
+    change.forEach((d) => (difference += d));
+    const changeOverEvaluation =
+      (data[data.length - 1][4] - data[0][1]) / data[data.length - 1][4];
+    return { change: difference, overallChange: changeOverEvaluation };
   }
 }
 
