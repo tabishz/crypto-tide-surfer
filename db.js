@@ -87,6 +87,11 @@ const updateLedger = async (amount, transaction) => {
   return false;
 };
 
+const balance = async () => {
+  const balance = await ledger.findOne({balances: true});
+  return balance;
+};
+
 module.exports = {
   getOpenOrder,
   updateOrder,
@@ -96,4 +101,5 @@ module.exports = {
   closeTrackOrder,
   getMaxPrice,
   setMaxPrice,
+  balance,
 };

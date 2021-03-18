@@ -16,7 +16,7 @@ const config = {
   evalTime: "1m",
   evalLimit: 4,
   evalLast: 4,
-  priceApiUrl: 'https://www.binance.com/api/v3',
+  priceApiUrl: process.env.PRICE_URL,
   db: {
     ledger: 'ledger',
     orders: 'orders',

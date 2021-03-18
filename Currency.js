@@ -1,4 +1,10 @@
-const ccxt = require('ccxt');
+let exchangeLibrary = '';
+if (process.env.NODE_ENV == 'prd') {
+  exchangeLibrary = 'ccxt';
+} else {
+  exchangeLibrary = './devExchange';
+}
+const ccxt = require(exchangeLibrary);
 const axios = require('axios');
 
 const db = require('./db');
@@ -17,44 +23,52 @@ class Currency {
     this.balance = {};
   }
 
-  // async buy(price, amount) {
-  //   const order = await this.limitBuy(price, amount);
-  //   if (order.status !== 'closed') {
-  //     const cancelled = await this.cancelOrder(order.id);
-  //     if (cancelled.status === 'CANCELED') {
-  //       return cancelled;
-  //     } else {
-  //       return false;
-  //     }
-  //   }
-  //   return order;
-  // }
+  async initialize() {
+    await this.getBalances;
+    this.log(`Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`);
+    return;
+  }
 
-  // async sell(price, amount) {
-  //   const order = await this.limitSell(price, amount);
-  //   if (order.status !== 'closed') {
-  //     const cancelled = await this.cancelOrder(order.id);
-  //     if (cancelled.status === 'CANCELED') {
-  //       return cancelled;
-  //     } else {
-  //       return false;
-  //     }
-  //   }
-  //   return order;
-  // }
+  async buy(price, amount) {
+    const order = await this.limitBuy(price, amount);
+    if (order.status !== 'closed') {
+      const cancelled = await this.cancelOrder(order.id);
+      if (cancelled.status === 'CANCELED') {
+        return cancelled;
+      } else {
+        return false;
+      }
+    }
+    this.purchasePrice = order.price;
+    return order;
+  }
+
+  async sell(price, amount) {
+    const order = await this.limitSell(price, amount);
+    if (order.status !== 'closed') {
+      const cancelled = await this.cancelOrder(order.id);
+      if (cancelled.status === 'CANCELED') {
+        return cancelled;
+      } else {
+        return false;
+      }
+    }
+    this.purchasePrice = null;
+    return order;
+  }
 
   // Test Functions
-  async buy(price, amount) {
-    await db.newTrackOrder(this.pair, amount, price * amount);
-    this.log(`Placing order for ${this.pair} for ${price} (${amount})`);
-    return await db.updateLedger(amount, 'buy');
-  }
-  async sell(price, amount) {
-    const trackOrder = await db.getOpenOrder();
-    await db.closeTrackOrder(trackOrder._id);
-    this.log(`Selling order for ${this.pair} for ${price} (${amount})`);
-    return await db.updateLedger(amount, 'sell');
-  }
+  // async buy(price, amount) {
+  //   await db.newTrackOrder(this.pair, amount, price * amount);
+  //   this.log(`Placing order for ${this.pair} for ${price} (${amount})`);
+  //   return await db.updateLedger(amount, 'buy');
+  // }
+  // async sell(price, amount) {
+  //   const trackOrder = await db.getOpenOrder();
+  //   await db.closeTrackOrder(trackOrder._id);
+  //   this.log(`Selling order for ${this.pair} for ${price} (${amount})`);
+  //   return await db.updateLedger(amount, 'sell');
+  // }
   // End Test Functions
 
   async limitBuy(price, amount) {
@@ -110,11 +124,17 @@ class Currency {
     if (this.balance.base > cfg.maxAmount) return cfg.maxAmount;    
   }
 
+  async determineStopLoss() {
+
+  }
+
   async checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
     const handle = setInterval(async () => {
       let order = await this.orderStatus(orderId);
       i++;
+      this.filled = order?.filled;
+      if (order?.filled > 0) this.balance.crypto = order?.remaining;
       if (i >= intervals || order.status === 'closed') {
         clearInterval(handle);
         return order;
@@ -124,13 +144,14 @@ class Currency {
 
   async orderStatus(orderId) {
     let order = await ccxt.fetchOrder(orderId);
-    order = JSON.parse(order);
+    // order = JSON.parse(order);
     return order.status;
   }
 
   async cancelOrder(orderId) {
     let cancelled = await ccxt.cancelOrder(orderId.toString());
-    return JSON.parse(cancelled);
+    // return JSON.parse(cancelled);
+    return cancelled;
   }
 
   /**
@@ -149,13 +170,17 @@ class Currency {
     return await db.getOpenOrder();
   }
 
+  /**
+   * Gets the current market price of crypto from exchange
+   * @returns price of the crypto in base currency
+   */
   async getPrice() {
     let info = await axios.get(
       `${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
     );
     info = JSON.parse(info.data);
-    this.price = parseFloat(info.price);
-    return this.price;
+    this.currentPrice = parseFloat(info.price);
+    return this.currentPrice;
   }
 
   /**
@@ -164,25 +189,28 @@ class Currency {
    * @param {ObjectID} uid mongoDB document ID
    * @returns
    */
-  async updatePrice(price, uid) {
+  async updatePrice(uid) {
     const newPrice = await this.getPrice();
-    const track = await db.getMaxPrice(uid);
-    if (track?.maxPrice) {
-      if (newPrice > track.maxPrice) {
+    this.currentPrice = newPrice;
+    if (this.maxPrice) {
+      if (newPrice > this.maxPrice) {
+        this.maxPrice = newPrice;
+        this.stopLossPrice = this.maxPrice * (1 - cfg.runningStopLoss);
         const updated = await db.setMaxPrice(uid, newPrice);
         if (updated) {
-          this.log(`Updated Max Price for ${this.pair}: ${newPrice.toString()}`);
+          this.log(`Updated Max Price for ${this.pair}: ${this.maxPrice.toString()}`);
           return newPrice;
         }
       }
     } else {
       const updated = await db.setMaxPrice(uid, newPrice);
+      this.maxPrice = newPrice;
       if (updated) {
         this.log(`Added Max Price for ${this.pair}: ${newPrice.toString()}`);
         return newPrice;
       }
     }
-    return false;
+    return this.currentPrice;
   }
 
   /**

@@ -1,4 +1,4 @@
-require('dotenv').config();
+// require('dotenv').config();
 const axios = require('axios');
 // const db = require('./db');
 const cfg = require('./config');
@@ -12,14 +12,11 @@ const main = async () => {
   if (previousOrder) {
     // if there is one, continue that progress
     // Monitor price and decide when to sell
-    // 
+    //
   } else {
     // if not start a new follow
-    
   }
 };
-
-
 
 // OLD STUFF -- need to remove
 
