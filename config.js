@@ -1,5 +1,5 @@
 const config = {
-  crypto: "ZIL",
+  crypto: "ADA",
   base: "USDT",
   minPrice: 0.005,
   maxPrice: 0.02,

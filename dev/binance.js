@@ -1,4 +1,4 @@
-const { db } = require('../config');
+const db = require('../db');
 
 module.exports = class binance {
   constructor (data) {
@@ -53,8 +53,9 @@ module.exports = class binance {
   };
   
   async fetchBalance() {
-    balance = await db.balance();
-    return balance;
+    const bal = await db.balance();
+    console.log('[Dev]', JSON.stringify(bal));
+    return bal;
   };
 
 }

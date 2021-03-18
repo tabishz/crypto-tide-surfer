@@ -24,7 +24,7 @@ class Currency {
   }
 
   async initialize() {
-    await this.getBalances;
+    await this.getBalances();
     this.log(`Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`);
     return;
   }
@@ -76,11 +76,11 @@ class Currency {
     if (order.status === 'closed') {
       this.balance.crypto = order.filled;
       this.balance.base = this.balance.base - order.cost;
-      await db.createOrder(amount, order.side, order);
+      await db.createOrder(order);
       await db.newTrackOrder(this.pair, amount, order.cost);
       await db.updateLedger({
-        cost: order.cost, transactions: order.side, crypto: this.crypto,
-        base: this.base, quantity: this.balance.crypto,
+        cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+        base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
       });      
       return order;
     } else {
@@ -88,16 +88,16 @@ class Currency {
       if (status.status === 'closed') {
         this.balance.crypto = order.filled;
         this.balance.base = this.balance.base - order.cost;
-        await this.createOrder(status.cost, status.side, status);
+        await db.createOrder(status);
         await db.newTrackOrder(this.pair, amount, status.cost);
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto,
-          base: this.base, quantity: this.balance.crypto,
+          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
       } else if (this.balance.filled) {
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto,
-          base: this.base, quantity: this.balance.filled,
+          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          base: this.base, quantity: this.balance.filled, purchasePrice: this.purchasePrice,
         });
       }
       return status;
@@ -111,7 +111,10 @@ class Currency {
       this.balance.crypto = 0;
       this.balance.base = this.balance.base + order.cost;
       await db.createOrder(order);
-      await db.updateLedger(order.cost, order.side);
+      await db.updateLedger({
+        cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+        base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+      });
       await db.closeTrackOrder(trackOrder._id);
       return order;
     } else {
@@ -121,12 +124,15 @@ class Currency {
         this.balance.crypto = 0;
         this.balance.base = this.balance.base + order.cost;
         await db.updateOrder(order.id, status);
-        await db.updateLedger(status.cost, status.side);
+        await db.updateLedger({
+          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+        });
         await db.closeTrackOrder(trackOrder._id);
       } else if (this.balance.filled) {
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto,
-          base: this.base, quantity: this.balance.filled,
+          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
       }
       return status;
@@ -135,15 +141,15 @@ class Currency {
 
   async getBalances() {
     const balances = await exchange.fetchBalance();
-    this.log(JSON.stringify(balances));
+    this.log(`[getBalances] ${JSON.stringify(balances)}`);
     this.balance.crypto = balances.free[this.crypto];
     this.balance.base = balances.free[this.base];
     return;
   }
 
   async decideAmount() {
-    if (this.balance?.base) await this.getBalances();
-    if (!this.balance.base || this.balance.base < cfg.minAmount) return 0;
+    if (!this.balance.base) await this.getBalances();
+    if (this.balance.base < cfg.minAmount) return 0;
     if (this.balance.base >= cfg.minAmount && this.balance.base <= cfg.maxAmount) {
       return this.balance.base;
     }
