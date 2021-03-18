@@ -1,7 +1,11 @@
-const { db } = require("./config");
+const { db } = require('./config');
 
-const binance = () => {
-  return;
+const binance = (credentials) => {
+  if (
+    credentials.apiKey == process.env.API_KEY &&
+    credentials.secret == process.env.API_SECRET
+  ) return true;
+  return false;
 };
 
 const createLimitBuyOrder = async (pair, amount, price) => {
@@ -52,7 +56,7 @@ const createLimitSellOrder = async (pair, amount, price) => {
 
 const fetchBalance = async () => {
   const balance = await db.balance();
-  return (balance);
+  return balance;
 };
 
 module.exports = {

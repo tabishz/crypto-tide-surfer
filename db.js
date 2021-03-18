@@ -73,13 +73,14 @@ const createOrder = async (newDoc) => {
   return false;
 };
 
-const updateLedger = async (amount, transaction) => {
+const updateLedger = async (details) => {
   const data = {
-    crypto: this.crypto,
-    base: this.base,
-    amount: amount,
-    transaction: transaction,
-    fees: cfg.exchange.fees * amount,
+    crypto: details.crypto,
+    base: details.base,
+    cost: details.cost,
+    quantity: details.quantity,
+    transaction: details.transaction,
+    fees: cfg.exchange.fees * details.cost,
     timestamp: new Date(),
   };
   const inserted = await ledger.insertOne(data);

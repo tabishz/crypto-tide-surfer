@@ -8,6 +8,8 @@ const config = {
   maxAmount: 50, // Maximum $ amount to use for purchases
   initialStopLoss: 0.015, // %age decimal 0.01 = 1%
   runningStopLoss: 0.01, // %age decimal
+  sellThreshold: 0.0025, // %age closeness to stopLoss price when to place order
+  buyThreshold: 0.0015, // %age closeness to buy price when placing order
   runningInterval: 10 *1000, // milliseconds
   followInterval: 60 *1000, // milliseconds
   minChange: 0.01, // Minimum % change in price over evaluation period to buy (0.01 = 1%)
@@ -15,7 +17,6 @@ const config = {
   bothChangeSatisfy: true, // both minChange and OverallChange must satisfy before buy
   evalTime: "1m",
   evalLimit: 4,
-  evalLast: 4,
   priceApiUrl: process.env.PRICE_URL,
   db: {
     ledger: 'ledger',
