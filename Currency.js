@@ -2,13 +2,13 @@ let exchangeLibrary = '';
 if (process.env.NODE_ENV == 'prd') {
   exchangeLibrary = 'ccxt';
 } else {
-  exchangeLibrary = './devExchange';
+  exchangeLibrary = './dev/Exchange';
 }
 const ccxt = require(exchangeLibrary);
 const axios = require('axios');
 
 const db = require('./db');
-const cfg = require('/.config');
+const cfg = require('./config');
 
 const exchange = new ccxt.binance({
   apiKey: process.env.API_KEY,
@@ -135,6 +135,7 @@ class Currency {
 
   async getBalances() {
     const balances = await exchange.fetchBalance();
+    this.log(JSON.stringify(balances));
     this.balance.crypto = balances.free[this.crypto];
     this.balance.base = balances.free[this.base];
     return;
@@ -266,8 +267,7 @@ class Currency {
     let info = await axios.get(
       `${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
     );
-    info = JSON.parse(info.data);
-    this.currentPrice = parseFloat(info.price);
+    this.currentPrice = parseFloat(info.data.price);
     return this.currentPrice;
   }
 
@@ -276,7 +276,7 @@ class Currency {
    * @param {String} msg
    */
   log(msg) {
-    console.log(new Date().getISOString(), msg);
+    console.log(new Date().toLocaleString(), msg);
   }
 
   /**
@@ -289,9 +289,10 @@ class Currency {
       const chart = await this.getMarketData();
       const market = await this.evaluateChart(chart);
       this.log(
-        `Change Sum: ${market.change * 100}% (need ${cfg.minChange * 100}%)|` +
-          ` Overall Change over last ${cfg.evalTime}*${cfg.evalLimit}: ` +
-          `${market.overallChange * 100}% (need ${cfg.minOverallChange * 100}%)`
+        `${this.crypto}=${this.currentPrice}  Change Sum: `+
+        `${(market.change * 100).toFixed(4)}% (need ${(cfg.minChange * 100)}%)|` +
+        ` Overall Change over last ${cfg.evalTime}*${cfg.evalLimit}: ` +
+        `${(market.overallChange * 100).toFixed(4)}% (need ${cfg.minOverallChange * 100}%)`
       );
       if (cfg.bothChangeSatisfy) {
         // Both changes must be greater than their minimum required values
@@ -323,6 +324,7 @@ class Currency {
     change.forEach((d) => (difference += d));
     const changeOverEvaluation =
       (data[data.length - 1][4] - data[0][1]) / data[data.length - 1][4];
+    this.currentPrice = data[data.length - 1][4];
     return { change: difference, overallChange: changeOverEvaluation };
   }
 }

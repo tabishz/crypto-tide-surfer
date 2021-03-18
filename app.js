@@ -1,6 +1,6 @@
 // require('dotenv').config();
 const config = require('./config');
-const Currency = require('./Currency');
+const { Currency } = require('./Currency');
 
 const cryptoCurrency = new Currency(config.crypto, config.base);
 
@@ -22,6 +22,7 @@ const main = async () => {
 };
 
 // running the main logic
+cryptoCurrency.log(`Running ENV:${process.env.NODE_ENV}`);
 main();
 
 /**

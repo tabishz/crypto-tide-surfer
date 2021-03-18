@@ -1,14 +1,17 @@
-const { MongoClient } = require('mongodb');
+const MongoClient = require('mongodb').MongoClient;
 const cfg = require('./config');
 
-const mongo = new MongoClient(process.env.DB_URI);
+// const mongo = new MongoClient(process.env.DB_URI, { useUnifiedTopology: true });
 
-mongo.connect();
 // mongo.db(process.env.DB_NAME).command({ping: 1});
-const db = mongo.db(process.env.DB_NAME);
-const orders = db.collection(cfg.db.orders);
-const ledger = db.collection(cfg.db.ledger);
-const track = db.collection(cfg.db.track);
+var db, orders, ledger, track;
+MongoClient.connect(process.env.DB_URI, { useNewUrlParser: true }, function(err, client) {
+  if(err) { return console.error(err); }
+  db = client.db(process.env.DB_NAME);
+  orders = db.collection(cfg.db.orders);
+  ledger = db.collection(cfg.db.ledger);
+  track = db.collection(cfg.db.track);
+});
 
 // const createRecord
 const getOpenOrder = async () => {
