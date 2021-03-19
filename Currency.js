@@ -31,6 +31,7 @@ class Currency {
 
   async buy(price, amount) {
     const order = await this.limitBuy(price, amount);
+    this.log(`Purchasing ${amount/price} ${this.crypto} for ${price}`);
     if (order.status !== 'closed') {
       const cancelled = await this.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
@@ -45,6 +46,7 @@ class Currency {
 
   async sell(price, amount) {
     const order = await this.limitSell(price, amount);
+    this.log(`Selling ${amount/price} ${this.crypto} for ${price}`);
     if (order.status !== 'closed') {
       const cancelled = await this.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
@@ -141,7 +143,6 @@ class Currency {
 
   async getBalances() {
     const balances = await exchange.fetchBalance();
-    this.log(`[getBalances] ${JSON.stringify(balances)}`);
     this.balance.crypto = balances.free[this.crypto];
     this.balance.base = balances.free[this.base];
     return;
@@ -264,6 +265,47 @@ class Currency {
       }
     }, cfg.runningInterval);
   }
+
+   /**
+   * This functions keeps on checking market data and makes the purchase when conditions meet
+   * @returns Object of order details
+   */
+  async purchaseCycle () {
+    const baseAmount = await this.decideAmount();
+    this.log(
+      `Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`
+    );
+    await this.followPrice();
+    await this.getPrice();
+    const thresholdPrice = this.currentPrice * (1 + cfg.buyThreshold);
+    let quantity = await this.decideQuantityToBuy();
+    if (this.balance.filled) quantity = quantity - this.balance.filled;
+    const order = await this.buy(thresholdPrice, quantity);
+    if (order.status == 'CANCELED') {
+      await this.purchaseCycle();
+    } else if (order.status == 'closed') {
+      return order;
+    }
+  };
+
+/**
+ * This functions keeps checking for price updates and sells at stop loss thresholds
+ * @returns Object of order details
+ */
+ async sellCycle () {
+  this.log(
+    `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`
+  );
+  await this.updatePrice();
+  const thresholdPrice = this.currentPrice * (1 + cfg.sellThreshold);
+  const order = await this.sell(thresholdPrice, this.balance.crypto);
+  if (order.status == 'CANCELED') {
+    await this.sellCycle();
+  } else if (order.status == 'closed') {
+    return order;
+  }
+  return order;
+};
 
   /**
    * Gets the current market price of crypto from exchange

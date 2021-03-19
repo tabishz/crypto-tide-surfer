@@ -18,6 +18,7 @@ const trackerSchema = new mongoose.Schema(
     symbol: { type: String, required: [true, 'Symbol is missing'] },
     status: String,
     amount: Number,
+    quantity: Number,
     price: Number,
     timestamp: {
       type: Date,
@@ -110,7 +111,7 @@ const Order = new mongoose.model('Order', orderSchema);
 const getOpenOrder = async () => {
   try {
     const openOrder = await Tracker.findOne({ status: 'open' }, { timestamp: -1 }).exec();
-    return openOrder;
+    return openOrder.toObject();
   } catch (error) {
     log(`Unable to get open order. ${JSON.stringify(error)}`);
     throw error;
@@ -122,6 +123,7 @@ const newTrackOrder = async (pair, amount, price) => {
     symbol: pair,
     status: 'open',
     amount: amount,
+    quantity: amount/price,
     price: price,
     // timestamp: new Date(),
   });
@@ -142,7 +144,8 @@ const newTrackOrder = async (pair, amount, price) => {
  */
 const getMaxPrice = async (uid) => {
   try {
-    return await Tracker.findOne({ _id: uid }, { maxPrice: 1 }).exec();
+    const price = await Tracker.findOne({ _id: uid }, { maxPrice: 1 }).exec();
+    return price.toObject();
   } catch (error) {
     log(`Unable to get Max Price. ${JSON.stringify(error)}`);
     throw error;
@@ -245,7 +248,7 @@ const updateLedger = async (details) => {
 const balance = async () => {
   try {
     const balance = await Ledger.findOne({ balances: true }).exec();
-    return balance;
+    return balance.toObject();
   } catch (error) {
     log(`Unable to get Balance. ${JSON.stringify(error)}`);
     throw error;

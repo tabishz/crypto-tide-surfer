@@ -54,7 +54,7 @@ module.exports = class binance {
   
   async fetchBalance() {
     const bal = await db.balance();
-    console.log('[Dev]', JSON.stringify(bal));
+    // console.log('[Dev]', JSON.stringify(bal));
     return bal;
   };
 
