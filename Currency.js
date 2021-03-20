@@ -250,20 +250,22 @@ class Currency {
     return this.currentPrice;
   }
 
-  async signalToSell() {
-    var signalHandle = setInterval(async () => {
-      await this.updatePrice;
-      let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
-      this.log(
-        `Current Price is: ${this.currentPrice}${this.base} (Purchased at `+
-        `${this.purchasePrice}${this.base}) [${diff.toFixed(4)}%]`
-      );
-      if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
-        // create stopLoss order
-        clearInterval(signalHandle);
-        return true;
+  signalToSell() {
+    return new Promose (async (resolve) => {
+      while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
+        await this.updatePrice;
+        let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
+        this.log(
+          `Current Price is: ${this.currentPrice}${this.base} (Purchased at `+
+          `${this.purchasePrice}${this.base}) [${diff.toFixed(4)}%]`
+        );
+        if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
+          // create stopLoss order
+          resolve(true);
+        }
+        this.delay(cfg.runningInterval);
       }
-    }, cfg.runningInterval);
+    });
   }
 
    /**
@@ -334,32 +336,39 @@ class Currency {
    * is above minimum price as specified in Config
    * @returns true when conditions are met
    */
-  async followPrice() {
-    var followHandle = setInterval(async () => {
-      const chart = await this.getMarketData();
-      const market = await this.evaluateChart(chart);
-      this.log(
-        `${this.crypto}=${this.currentPrice}  Change Sum: `+
-        `${(market.change * 100).toFixed(4)}% (need ${(cfg.minChange * 100)}%)|` +
-        ` Overall Change over last ${cfg.evalTime}*${cfg.evalLimit}: ` +
-        `${(market.overallChange * 100).toFixed(4)}% (need ${cfg.minOverallChange * 100}%)`
-      );
-      if (cfg.bothChangeSatisfy) {
-        // Both changes must be greater than their minimum required values
-        if (market.change > cfg.minChange && market.overallChange > cfg.minOverallChange) {
-          this.log('Conditions to Purchase are met!');
-          clearInterval(followHandle);
-          return true;
-        }
-      } else {
-        // Either of the changes must be greater than their minimum required values
-        if (market.change > cfg.minChange || market.overallChange > cfg.minOverallChange) {
-          this.log('One of the Condition to Purchase is met!');
-          clearInterval(followHandle);
-          return true;
-        }
+  followPrice() {
+    var conditionMet;
+    return new Promise (async (resolve) => {
+      while (conditionMet !== true) {
+        const chart = await this.getMarketData();
+        const market = await this.evaluateChart(chart);
+        this.log(
+          `${this.crypto}=${this.currentPrice}  Change Sum: `+
+          `${(market.change * 100).toFixed(4)}% (need ${(cfg.minChange * 100)}%)|` +
+          ` Overall Change over last ${cfg.evalTime}*${cfg.evalLimit}: ` +
+          `${(market.overallChange * 100).toFixed(4)}% (need ${cfg.minOverallChange * 100}%)`
+        );
+        conditionMet = this.buyCondition(market);
+        if (conditionMet) resolve(true);
+        await this.delay(cfg.followInterval);
       }
-    }, cfg.followInterval);
+    });
+  }
+
+  buyCondition(rate) {
+    if (cfg.bothChangeSatisfy) {
+      // Both changes must be greater than their minimum required values
+      if (rate.change > cfg.minChange && rate.overallChange > cfg.minOverallChange) {
+        this.log('Conditions to Purchase are met!');
+        return true;
+      }
+    }
+    // Either of the changes must be greater than their minimum required values
+    if (rate.change > cfg.minChange || rate.overallChange > cfg.minOverallChange) {
+      this.log('One of the Condition to Purchase is met!');
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -378,6 +387,10 @@ class Currency {
       (data[data.length - 1][4] - data[0][1]) / data[data.length - 1][4];
     this.currentPrice = data[data.length - 1][4];
     return { change: difference, overallChange: changeOverEvaluation };
+  }
+
+  async delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
