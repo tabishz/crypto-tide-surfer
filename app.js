@@ -5,14 +5,10 @@ const { Currency } = require('./Currency');
 const cc = new Currency(config.crypto, config.base);
 
 async function main () {
-  cc.purchaseCycle()
-    .then(async ordered => {
-      await cc.sellCycle()
-        .then(async sold => {
-          await main();
-          return;
-        });
-    });
+  await cc.purchaseCycle();
+  await cc.sellCycle()
+  await main();
+  return;
 };
 
 // running the main logic
