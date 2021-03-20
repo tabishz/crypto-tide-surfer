@@ -31,7 +31,7 @@ class Currency {
 
   async buy(price, amount) {
     const order = await this.limitBuy(price, amount);
-    this.log(`Purchasing ${amount/price} ${this.crypto} for ${price}`);
+    this.log(`Purchasing ${amount} ${this.crypto} @ ${price} ${this.base}`);
     if (order.status !== 'closed') {
       const cancelled = await this.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
@@ -40,6 +40,7 @@ class Currency {
         return false;
       }
     }
+    this.orderId = order.id;
     this.purchasePrice = order.price;
     return order;
   }
@@ -56,6 +57,7 @@ class Currency {
       }
     }
     this.purchasePrice = null;
+    this.orderId = null;
     return order;
   }
 
@@ -270,11 +272,12 @@ class Currency {
   signalToSell() {
     return new Promise (async (resolve) => {
       while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
-        await this.updatePrice;
+        await this.updatePrice(this.orderId);
         let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
         this.log(
-          `Current Price is: ${this.currentPrice}${this.base} (Purchased at `+
-          `${this.purchasePrice}${this.base}) [${diff.toFixed(4)}%]`
+          `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at `+
+          `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] `+
+          `StopLoss @ ${this.stopLossPrice} ${this.base}`
         );
         if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
           // create stopLoss order
