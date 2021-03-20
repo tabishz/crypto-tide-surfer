@@ -107,7 +107,7 @@ class Currency {
   }
 
   async limitSell(price, amount) {
-    const trackOrder = await db.getOpenOrder();
+    const trackOrder = await db.newTrackOrder(this.pair, amount, price);
     const order = await exchange.createLimitSellOrder(this.pair, amount, price);
     if (order.status === 'closed') {
       this.balance.crypto = 0;
@@ -275,16 +275,18 @@ class Currency {
     this.log(
       `Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`
     );
-    await this.followPrice();
-    await this.getPrice();
-    const thresholdPrice = this.currentPrice * (1 + cfg.buyThreshold);
-    let quantity = await this.decideQuantityToBuy();
-    if (this.balance.filled) quantity = quantity - this.balance.filled;
-    const order = await this.buy(thresholdPrice, quantity);
-    if (order.status == 'CANCELED') {
-      await this.purchaseCycle();
-    } else if (order.status == 'closed') {
-      return order;
+    const goAhead = await this.followPrice();
+    if (goAhead === true) {
+      await this.getPrice();
+      const thresholdPrice = this.currentPrice * (1 + cfg.buyThreshold);
+      let quantity = await this.decideQuantityToBuy();
+      if (this.balance.filled) quantity = quantity - this.balance.filled;
+      const order = await this.buy(thresholdPrice, quantity);
+      if (order.status == 'CANCELED') {
+        await this.purchaseCycle();
+      } else if (order.status == 'closed') {
+        return order;
+      }
     }
   };
 
@@ -345,12 +347,14 @@ class Currency {
       if (cfg.bothChangeSatisfy) {
         // Both changes must be greater than their minimum required values
         if (market.change > cfg.minChange && market.overallChange > cfg.minOverallChange) {
+          this.log('Conditions to Purchase are met!');
           clearInterval(followHandle);
           return true;
         }
       } else {
         // Either of the changes must be greater than their minimum required values
         if (market.change > cfg.minChange || market.overallChange > cfg.minOverallChange) {
+          this.log('One of the Condition to Purchase is met!');
           clearInterval(followHandle);
           return true;
         }

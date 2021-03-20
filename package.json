@@ -9,7 +9,6 @@
   "dependencies": {
     "axios": "^0.21.1",
     "ccxt": "^1.42.96",
-    "mongo": "^0.1.0",
     "mongoose": "^5.12.1"
   },
   "devDependencies": {
