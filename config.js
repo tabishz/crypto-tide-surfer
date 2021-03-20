@@ -16,7 +16,7 @@ const config = {
   minOverallChange: 0.01, // Minimum % change between newest and oldest candle in price to buy (0.01 = 1%)
   bothChangeSatisfy: false, // both minChange and OverallChange must satisfy before buy
   evalTime: "1m",
-  evalLimit: 5,
+  evalLimit: 7,
   priceApiUrl: process.env.PRICE_URL,
   db: {
     ledger: 'ledger',

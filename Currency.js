@@ -268,7 +268,7 @@ class Currency {
   }
 
   signalToSell() {
-    return new Promose (async (resolve) => {
+    return new Promise (async (resolve) => {
       while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
         await this.updatePrice;
         let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
