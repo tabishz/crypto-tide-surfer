@@ -1,9 +1,9 @@
 const config = {
   crypto: process.env.CRYPTO,
   base: process.env.BASE,
-  minPrice: 0.005,
-  maxPrice: 0.02,
-  initialAmount: 0.20, // Total Base Asset (%)
+  minPrice: 0.005, // not being used at the moment
+  maxPrice: 0.02, // not being used at the moment
+  initialAmount: 0.20, // Total Base Asset (%) // not being used at the moment
   minAmount: 10, // Minimum $ amount to use for purchases
   maxAmount: 50, // Maximum $ amount to use for purchases
   initialStopLoss: 0.015, // %age decimal 0.01 = 1%

@@ -13,6 +13,7 @@ mongoose
 
 const trackerSchema = new mongoose.Schema(
   {
+    id: String,
     symbol: { type: String, required: [true, 'Symbol is missing'] },
     status: String,
     amount: Number,
@@ -85,8 +86,9 @@ const getOpenOrder = async () => {
   }
 };
 
-const newTrackOrder = async (pair, amount, price) => {
+const newTrackOrder = async (pair, amount, price, id) => {
   const data = new Tracker({
+    id: id,
     symbol: pair,
     status: 'open',
     amount: amount,
@@ -109,10 +111,11 @@ const newTrackOrder = async (pair, amount, price) => {
  * @param {ObjectID} uid for mongoDB
  * @returns Object with maxPrice if available
  */
-const getMaxPrice = async (uid) => {
+const getMaxPrice = async (oid) => {
   try {
-    const price = await Tracker.findOne({ _id: uid }, { maxPrice: 1 }).exec();
-    return price.toObject();
+    const price = await Tracker.findOne({ id: oid }, { maxPrice: 1 }).exec();
+    if (price) return price.toObject();
+    return null;
   } catch (error) {
     log(`Unable to get Max Price. ${JSON.stringify(error)}`);
     throw error;
@@ -125,22 +128,22 @@ const getMaxPrice = async (uid) => {
  * @param {Float} price max price to set in database
  * @returns Object of confirmation of update
  */
-const setMaxPrice = async (uid, price) => {
+const setMaxPrice = async (oid, price) => {
   try {
-    return await Tracker.updateOne({ _id: uid }, { maxPrice: price }, { upsert: true });
+    return await Tracker.updateOne({ id: oid }, { maxPrice: price }, { upsert: true });
   } catch (error) {
     log(`Unable to set Max Price. ${JSON.stringify(error)}`);
     throw error;
   }
 };
 
-const closeTrackOrder = async (uid) => {
+const closeTrackOrder = async (oid) => {
   const data = {
     status: 'closed',
     closeTime: new Date(),
   };
   try {
-    return await Tracker.updateOne({ _id: uid }, data, { upsert: true });
+    return await Tracker.updateOne({ id: oid }, data, { upsert: true });
   } catch (error) {
     log(`Unable to close Track Order. ${JSON.stringify(error)}`);
     throw error;

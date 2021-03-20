@@ -75,13 +75,20 @@ class Currency {
   // }
   // End Test Functions
 
+  /**
+   * This function places the limit order to buy crypto quantity at given price limit
+   * Also adds info to Database
+   * @param {Number} price limit price at which to buy crypto
+   * @param {Number} amount quantity of crypto to buy
+   * @returns Object of order details
+   */
   async limitBuy(price, amount) {
     const order = await exchange.createLimitBuyOrder(this.pair, amount, price);
     if (order.status === 'closed') {
       this.balance.crypto = order.filled;
       this.balance.base = this.balance.base - order.cost;
       await db.createOrder(order);
-      await db.newTrackOrder(this.pair, amount, order.cost);
+      await db.newTrackOrder(this.pair, amount, order.cost, order.id);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
         base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
@@ -93,7 +100,7 @@ class Currency {
         this.balance.crypto = order.filled;
         this.balance.base = this.balance.base - order.cost;
         await db.createOrder(status);
-        await db.newTrackOrder(this.pair, amount, status.cost);
+        await db.newTrackOrder(this.pair, amount, status.cost, status.id);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
@@ -108,8 +115,16 @@ class Currency {
     }
   }
 
+  /**
+   * This function places the limit order to sell crypto quantity at given price limit
+   * Also adds info to Database
+   * @param {Number} price limit price at which to sell crypto
+   * @param {Number} amount quantity of crypto to sell
+   * @returns Object of order details
+   */
   async limitSell(price, amount) {
-    const trackOrder = await db.newTrackOrder(this.pair, amount, price);
+    let trackOrder = await db.newTrackOrder(this.pair, amount, price);
+    if (trackOrder) trackOrder = trackOrder.toObject();
     const order = await exchange.createLimitSellOrder(this.pair, amount, price);
     if (order.status === 'closed') {
       this.balance.crypto = 0;
@@ -119,7 +134,7 @@ class Currency {
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
         base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
       });
-      await db.closeTrackOrder(trackOrder._id);
+      await db.closeTrackOrder(trackOrder.id);
       return order;
     } else {
       await db.createOrder(order);
@@ -132,7 +147,7 @@ class Currency {
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
-        await db.closeTrackOrder(trackOrder._id);
+        await db.closeTrackOrder(trackOrder.id);
       } else if (this.balance.filled) {
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
