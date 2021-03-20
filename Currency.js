@@ -280,7 +280,7 @@ class Currency {
           // create stopLoss order
           resolve(true);
         }
-        this.delay(cfg.runningInterval);
+        await this.delay(cfg.runningInterval);
       }
     });
   }
