@@ -1,5 +1,5 @@
 const config = {
-  crypto: "ADA",
+  crypto: "ZIL",
   base: "USDT",
   minPrice: 0.005,
   maxPrice: 0.02,
@@ -11,12 +11,12 @@ const config = {
   sellThreshold: 0.0025, // %age closeness to stopLoss price when to place order
   buyThreshold: 0.0015, // %age closeness to buy price when placing order
   runningInterval: 10 *1000, // milliseconds
-  followInterval: 20 *1000, // milliseconds
+  followInterval: 15 *1000, // milliseconds
   minChange: 0.01, // Minimum % change in price over evaluation period to buy (0.01 = 1%)
   minOverallChange: 0.01, // Minimum % change between newest and oldest candle in price to buy (0.01 = 1%)
-  bothChangeSatisfy: true, // both minChange and OverallChange must satisfy before buy
+  bothChangeSatisfy: false, // both minChange and OverallChange must satisfy before buy
   evalTime: "1m",
-  evalLimit: 4,
+  evalLimit: 5,
   priceApiUrl: process.env.PRICE_URL,
   db: {
     ledger: 'ledger',

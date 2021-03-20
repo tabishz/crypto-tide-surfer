@@ -1,5 +1,3 @@
-// const { MongoClient } = require('mongodb');
-// const mongo = require('./db/mongoConn');
 const mongoose = require('mongoose');
 const config = require('./config');
 
@@ -41,6 +39,10 @@ const ledgerSchema = new mongoose.Schema(
     transaction: String,
     fees: Number,
     PnL: Number,
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { collection: config.db.ledger }
 );
@@ -72,41 +74,6 @@ const Tracker = new mongoose.model('Tracker', trackerSchema);
 const Ledger = new mongoose.model('Ledger', ledgerSchema);
 const Order = new mongoose.model('Order', orderSchema);
 
-// // const mongo = new MongoClient(process.env.DB_URI, { useUnifiedTopology: true });
-
-// const client = new MongoClient(process.env.DB_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// });
-
-// var db;
-// async function run() {
-//   try {
-//     // Connect the client to the server
-//     await client.connect();
-//     // Establish and verify connection
-//     db = await client.db(process.env.DB_NAME);
-//     console.log('Connected successfully to mongoDB database:' + process.env.DB_NAME);
-//   } catch (error) {
-//     throw error;
-//   }
-//   return;
-// }
-// run();
-
-// var dbConn = connect();
-// var orders, ledger, track;
-// orders = db.collection(config.db.orders);
-// ledger = db.collection(config.db.ledger);
-// track = db.collection(config.db.track);
-// MongoClient.connect(process.env.DB_URI, { useNewUrlParser: true }, function(err, client) {
-//   if(err) { return console.error(err); }
-//   db = client.db(process.env.DB_NAME);
-//   orders = db.collection(config.db.orders);
-//   ledger = db.collection(config.db.ledger);
-//   track = db.collection(config.db.track);
-// });
-
 // const createRecord
 const getOpenOrder = async () => {
   try {
@@ -123,7 +90,7 @@ const newTrackOrder = async (pair, amount, price) => {
     symbol: pair,
     status: 'open',
     amount: amount,
-    quantity: amount/price,
+    quantity: amount / price,
     price: price,
     // timestamp: new Date(),
   });
@@ -222,11 +189,12 @@ const updateLedger = async (details) => {
     fees: config.exchange.fees * details.cost,
     // timestamp: new Date(), // Using Default in Schema
   };
-  
+
   if (details.transaction == 'sell') {
     data.priceSold = details.price;
     data.PnL =
-      (data.priceSold * data.quantity - data.fees) -
+      data.priceSold * data.quantity -
+      data.fees -
       (data.priceBought * quantity + data.priceBought * quantity * config.exchange.fees);
   }
 
@@ -237,6 +205,16 @@ const updateLedger = async (details) => {
     return false;
   } catch (error) {
     log(`Unable to update Ledger. ${JSON.stringify(error)}`);
+    throw error;
+  }
+};
+
+const lastBalance = async () => {
+  try {
+    const balance = await Ledger.findOne({ transaction: 'sell' })
+      .sort({ timestamp: -1 })
+      .exec();
+  } catch (error) {
     throw error;
   }
 };
@@ -269,13 +247,5 @@ module.exports = {
   getMaxPrice,
   setMaxPrice,
   balance,
+  lastBalance,
 };
-
-// const exit = () => {
-//   server.close(async () => {
-//     await db.close();
-//     process.exit(0);
-//   });
-// };
-// process.on('SIGINT', exit);
-// process.on('SIGTERM', exit);

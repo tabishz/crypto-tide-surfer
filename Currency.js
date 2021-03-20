@@ -148,8 +148,22 @@ class Currency {
     return;
   }
 
+  async getLastBalance() {
+    let lastBalance = await db.lastBalance();
+    if (lastBalance) {
+      lastBalance = lastBalance.toObject();
+      this.lastBalance = lastBalance.cost;
+      if (this.lastBalance > 0) return this.lastBalance;
+    }
+    return 0;
+  }
+
   async decideAmount() {
-    if (!this.balance.base) await this.getBalances();
+    await this.getBalances();
+    await this.getLastBalance();
+    if (this.lastBalance >= cfg.minAmount && this.lastBalance <= cfg.maxAmount) {
+      return this.lastBalance;
+    }
     if (this.balance.base < cfg.minAmount) return 0;
     if (this.balance.base >= cfg.minAmount && this.balance.base <= cfg.maxAmount) {
       return this.balance.base;

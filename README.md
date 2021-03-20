@@ -19,7 +19,7 @@ module.exports = {
       API_SECRET: '',
       DB_HOST: 'localhost',
       DB_NAME: 'dev_botdb',
-      DB_URI: 'mongodb://user:password@localhost:27017/dev_botdb',
+      DB_URI: 'mongodb://root:secretpass@localhost:27017/dev_botdb',
       PRICE_URL: 'https://www.binance.com/api/v3',
     },
     env_prd: {
@@ -28,7 +28,7 @@ module.exports = {
       API_SECRET: 'secretsauce',
       DB_HOST: 'freya',
       DB_NAME: 'botdb',
-      DB_URI: 'mongodb://user:password@localhost:27017/botdb',
+      DB_URI: 'mongodb://root:secretpass@localhost:27017/botdb',
       PRICE_URL: 'https://www.binance.com/api/v3',
     }
   }],
