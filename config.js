@@ -1,6 +1,6 @@
 const config = {
   crypto: process.env.CRYPTO,
-  base: crypto.env.BASE,
+  base: process.env.BASE,
   minPrice: 0.005,
   maxPrice: 0.02,
   initialAmount: 0.20, // Total Base Asset (%)
