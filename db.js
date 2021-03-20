@@ -196,9 +196,8 @@ const updateLedger = async (details) => {
   if (details.transaction == 'sell') {
     data.priceSold = details.price;
     data.PnL =
-      data.priceSold * data.quantity -
-      data.fees -
-      (data.priceBought * quantity + data.priceBought * quantity * config.exchange.fees);
+      (data.priceSold * data.quantity - data.fees) -
+      (data.priceBought * data.quantity * (1 + config.exchange.fees));
   }
 
   try {
