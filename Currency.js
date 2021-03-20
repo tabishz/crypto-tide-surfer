@@ -187,22 +187,25 @@ class Currency {
     return this.stopLossPrice;
   }
 
-  async checkOrderStatus(orderId, wait, intervals) {
+  checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
-    const handle = setInterval(async () => {
-      let order = await this.orderStatus(orderId);
-      i++;
-      this.balance.filled = order?.filled;
-      if (order?.filled > 0) {
-        if (order.side == 'sell') this.balance.crypto = order.remaining;
-        if (order.side == 'buy') this.balance.crypto = order.filled;
-        this.balance.filled = order.filled;
+    let order;
+    return(async(resolve) => {
+      while (i <= intervals || order?.status == 'closed' ) {
+        order = await this.orderStatus(orderId);
+        i++;
+        this.balance.filled = order?.filled;
+        if (order?.filled > 0) {
+          if (order.side == 'sell') this.balance.crypto = order.remaining;
+          if (order.side == 'buy') this.balance.crypto = order.filled;
+          this.balance.filled = order.filled;
+        }
+        if (i >= intervals || order.status === 'closed') {
+          resolve(order);
+        }
       }
-      if (i >= intervals || order.status === 'closed') {
-        clearInterval(handle);
-        return order;
-      }
-    }, wait);
+      await this.delay(wait);
+    });
   }
 
   async orderStatus(orderId) {
