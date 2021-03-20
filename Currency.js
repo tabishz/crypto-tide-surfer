@@ -81,7 +81,7 @@ class Currency {
       await db.createOrder(order);
       await db.newTrackOrder(this.pair, amount, order.cost);
       await db.updateLedger({
-        cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+        cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
         base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
       });      
       return order;
@@ -93,12 +93,12 @@ class Currency {
         await db.createOrder(status);
         await db.newTrackOrder(this.pair, amount, status.cost);
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
       } else if (this.balance.filled) {
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.filled, purchasePrice: this.purchasePrice,
         });
       }
@@ -114,7 +114,7 @@ class Currency {
       this.balance.base = this.balance.base + order.cost;
       await db.createOrder(order);
       await db.updateLedger({
-        cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+        cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
         base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
       });
       await db.closeTrackOrder(trackOrder._id);
@@ -127,13 +127,13 @@ class Currency {
         this.balance.base = this.balance.base + order.cost;
         await db.updateOrder(order.id, status);
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
         await db.closeTrackOrder(trackOrder._id);
       } else if (this.balance.filled) {
         await db.updateLedger({
-          cost: order.cost, transactions: order.side, crypto: this.crypto, price: order.price,
+          cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
         });
       }
@@ -318,6 +318,7 @@ class Currency {
     `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`
   );
   await this.updatePrice();
+  await this.signalToSell();
   const thresholdPrice = this.currentPrice * (1 + cfg.sellThreshold);
   const order = await this.sell(thresholdPrice, this.balance.crypto);
   if (order.status == 'CANCELED') {
