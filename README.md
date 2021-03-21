@@ -21,6 +21,22 @@ module.exports = {
       DB_NAME: 'dev_botdb',
       DB_URI: 'mongodb://root:secretpass@localhost:27017/dev_botdb',
       PRICE_URL: 'https://www.binance.com/api/v3',
+      MIN_AMOUNT: 10,
+      MAX_AMOUNT: 50,
+      INIT_STOP_LOSS: 0.015,
+      RUN_STOP_LOST: 0.018,
+      SELL_THRESHOLD: 0.0015,
+      BUY_THRESHOLD: 0.0015,
+      RUNNING_INTERVAL: 10, // seconds
+      FOLLOW_INTERVAL: 15, // seconds
+      COOLOFF_PERIOD: 2, // minutes
+      MIN_CHANGE: 0.008,
+      MIN_OVERALL_CHANGE: 0.008,
+      SATISFY_BOTH: 0, // 0 for False, 1 for True
+      EVAL_TIME: '1m', // 1m, 3m, 5m, 10m, 15m, 30m, 1h
+      EVAL_LIMIT: 6, // # of evaluation candles
+      ORDER_WAIT: 3000,
+      ORDER_INTERVALS: 6,
     },
     env_prd: {
       NODE_ENV: 'prd',
@@ -30,6 +46,22 @@ module.exports = {
       DB_NAME: 'botdb',
       DB_URI: 'mongodb://root:secretpass@localhost:27017/botdb',
       PRICE_URL: 'https://www.binance.com/api/v3',
+      MIN_AMOUNT: 10,
+      MAX_AMOUNT: 50,
+      INIT_STOP_LOSS: 0.015,
+      RUN_STOP_LOST: 0.018,
+      SELL_THRESHOLD: 0.0015,
+      BUY_THRESHOLD: 0.0015,
+      RUNNING_INTERVAL: 10, // seconds
+      FOLLOW_INTERVAL: 15, // seconds
+      COOLOFF_PERIOD: 2, // minutes
+      MIN_CHANGE: 0.008,
+      MIN_OVERALL_CHANGE: 0.008,
+      SATISFY_BOTH: 0, // 0 for False, 1 for True
+      EVAL_TIME: '1m', // 1m, 3m, 5m, 10m, 15m, 30m, 1h
+      EVAL_LIMIT: 6, // # of evaluation candles
+      ORDER_WAIT: 3000,
+      ORDER_INTERVALS: 6,
     }
   }],
 };
