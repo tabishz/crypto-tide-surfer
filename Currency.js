@@ -91,7 +91,7 @@ class Currency {
       await db.newTrackOrder(this.pair, amount, order.cost, order.id);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+        base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
       });      
       return order;
     } else {
@@ -103,12 +103,12 @@ class Currency {
         await db.newTrackOrder(this.pair, amount, status.cost, status.id);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
         });
       } else if (this.balance.filled) {
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.filled, purchasePrice: this.purchasePrice,
+          base: this.base, quantity: this.balance.filled, priceBought: this.purchasePrice,
         });
       }
       return status;
@@ -132,7 +132,7 @@ class Currency {
       await db.createOrder(order);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+        base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
       });
       await db.closeTrackOrder(trackOrder.id);
       return order;
@@ -145,13 +145,13 @@ class Currency {
         await db.updateOrder(order.id, status);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
         });
         await db.closeTrackOrder(trackOrder.id);
       } else if (this.balance.filled) {
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, purchasePrice: this.purchasePrice,
+          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
         });
       }
       return status;
@@ -226,13 +226,13 @@ class Currency {
   }
 
   async orderStatus(orderId) {
-    let order = await ccxt.fetchOrder(orderId);
+    let order = await exchange.fetchOrder(orderId);
     // order = JSON.parse(order);
     return order.status;
   }
 
   async cancelOrder(orderId) {
-    let cancelled = await ccxt.cancelOrder(orderId.toString());
+    let cancelled = await exchange.cancelOrder(orderId.toString());
     // return JSON.parse(cancelled);
     return cancelled;
   }
@@ -284,25 +284,6 @@ class Currency {
     return this.currentPrice;
   }
 
-  signalToSell() {
-    return new Promise (async (resolve) => {
-      while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
-        await this.updatePrice(this.orderId);
-        let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
-        this.log(
-          `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at `+
-          `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] `+
-          `StopLoss @ ${this.stopLossPrice} ${this.base}`
-        );
-        if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
-          // create stopLoss order
-          resolve(true);
-        }
-        await this.delay(cfg.runningInterval);
-      }
-    });
-  }
-
    /**
    * This functions keeps on checking market data and makes the purchase when conditions meet
    * @returns Object of order details
@@ -327,25 +308,43 @@ class Currency {
     }
   };
 
-/**
- * This functions keeps checking for price updates and sells at stop loss thresholds
- * @returns Object of order details
- */
- async sellCycle () {
-  this.log(
-    `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`
-  );
-  await this.updatePrice();
-  await this.signalToSell();
-  const thresholdPrice = this.currentPrice * (1 + cfg.sellThreshold);
-  const order = await this.sell(thresholdPrice, this.balance.crypto);
-  if (order.status == 'CANCELED') {
-    await this.sellCycle();
-  } else if (order.status == 'closed') {
+  /**
+   * This functions keeps checking for price updates and sells at stop loss thresholds
+   * @returns Object of order details
+   */
+  async sellCycle () {
+    this.log(
+      `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`
+    );
+    await this.updatePrice(this.orderId);
+    await this.signalToSell();
+    const order = await this.sell(this.currentPrice, this.balance.crypto);
+    if (order.status == 'CANCELED') {
+      await this.sellCycle();
+    } else if (order.status == 'closed') {
+      return order;
+    }
     return order;
+  };
+
+  signalToSell() {
+    return new Promise (async (resolve) => {
+      while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
+        await this.updatePrice(this.orderId);
+        let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
+        this.log(
+          `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at `+
+          `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] `+
+          `StopLoss @ ${this.stopLossPrice} ${this.base}`
+        );
+        if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
+          // create stopLoss order
+          resolve(true);
+        }
+        await this.delay(cfg.runningInterval);
+      }
+    });
   }
-  return order;
-};
 
   /**
    * Gets the current market price of crypto from exchange

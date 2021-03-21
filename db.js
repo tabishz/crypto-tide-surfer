@@ -8,8 +8,12 @@ mongoose
     useCreateIndex: true,
     poolSize: 5,
   })
-  .then(() => log('Connected to MongoDB'))
-  .catch(() => log('Unable to connect to MongoDB'));
+  .then(() => {
+    log('Connected to MongoDB');
+  })
+  .catch((error) => {
+    log('Unable to connect to MongoDB '+ JSON.stringify(error));
+  });
 
 const trackerSchema = new mongoose.Schema(
   {
@@ -36,6 +40,7 @@ const ledgerSchema = new mongoose.Schema(
     cost: Number,
     priceBought: Number,
     priceSold: Number,
+    price: Number,
     quantity: Number,
     transaction: String,
     fees: Number,
@@ -186,7 +191,7 @@ const updateLedger = async (details) => {
     crypto: details.crypto,
     base: details.base,
     cost: details.cost,
-    priceBought: details.purchasePrice,
+    priceBought: details.priceBought,
     quantity: details.quantity,
     transaction: details.transaction,
     fees: config.exchange.fees * details.cost,
@@ -216,6 +221,7 @@ const lastBalance = async () => {
     const balance = await Ledger.findOne({ transaction: 'sell' })
       .sort({ timestamp: -1 })
       .exec();
+    return balance;
   } catch (error) {
     throw error;
   }
