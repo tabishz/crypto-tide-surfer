@@ -15,24 +15,6 @@ mongoose
     log('Unable to connect to MongoDB '+ JSON.stringify(error));
   });
 
-const trackerSchema = new mongoose.Schema(
-  {
-    id: String,
-    symbol: { type: String, required: [true, 'Symbol is missing'] },
-    status: String,
-    amount: Number,
-    quantity: Number,
-    price: Number,
-    timestamp: {
-      type: Date,
-      default: Date.now,
-    },
-    maxPrice: Number,
-    closeTime: Date,
-  },
-  { collection: config.db.track }
-);
-
 const ledgerSchema = new mongoose.Schema(
   {
     crypto: String,
@@ -76,84 +58,8 @@ const orderSchema = new mongoose.Schema(
   { collection: config.db.order }
 );
 
-const Tracker = new mongoose.model('Tracker', trackerSchema);
 const Ledger = new mongoose.model('Ledger', ledgerSchema);
 const Order = new mongoose.model('Order', orderSchema);
-
-// const createRecord
-const getOpenOrder = async () => {
-  try {
-    const openOrder = await Tracker.findOne({ status: 'open' }, { timestamp: -1 }).exec();
-    return openOrder.toObject();
-  } catch (error) {
-    log(`Unable to get open order. ${JSON.stringify(error)}`);
-    throw error;
-  }
-};
-
-const newTrackOrder = async (pair, amount, price, id) => {
-  const data = new Tracker({
-    id: id,
-    symbol: pair,
-    status: 'open',
-    amount: amount,
-    quantity: amount / price,
-    price: price,
-    // timestamp: new Date(),
-  });
-  try {
-    const results = await data.save();
-    log('Tracker log created');
-    return results;
-  } catch (error) {
-    log(`Unable to created tracker log. ${JSON.stringify(error)}`);
-    throw error;
-  }
-};
-
-/**
- * Gets Max Price for the tracked order if available in database
- * @param {ObjectID} uid for mongoDB
- * @returns Object with maxPrice if available
- */
-const getMaxPrice = async (oid) => {
-  try {
-    const price = await Tracker.findOne({ id: oid }, { maxPrice: 1 }).exec();
-    if (price) return price.toObject();
-    return null;
-  } catch (error) {
-    log(`Unable to get Max Price. ${JSON.stringify(error)}`);
-    throw error;
-  }
-};
-
-/**
- * Updates maxPrice in the mongoDB collection
- * @param {ObjectID} uid for mongoDB
- * @param {Float} price max price to set in database
- * @returns Object of confirmation of update
- */
-const setMaxPrice = async (oid, price) => {
-  try {
-    return await Tracker.updateOne({ id: oid }, { maxPrice: price }, { upsert: true });
-  } catch (error) {
-    log(`Unable to set Max Price. ${JSON.stringify(error)}`);
-    throw error;
-  }
-};
-
-const closeTrackOrder = async (oid) => {
-  const data = {
-    status: 'closed',
-    closeTime: new Date(),
-  };
-  try {
-    return await Tracker.updateOne({ id: oid }, data, { upsert: true });
-  } catch (error) {
-    log(`Unable to close Track Order. ${JSON.stringify(error)}`);
-    throw error;
-  }
-};
 
 /**
  * updates an order in mongoDB by replacing old one
@@ -246,14 +152,9 @@ const log = (msg) => {
 };
 
 module.exports = {
-  getOpenOrder,
   updateOrder,
   updateLedger,
   createOrder,
-  newTrackOrder,
-  closeTrackOrder,
-  getMaxPrice,
-  setMaxPrice,
   balance,
   lastBalance,
 };

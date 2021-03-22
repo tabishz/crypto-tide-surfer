@@ -27,6 +27,8 @@ class Currency {
     await this.getBalances();
     await this.getLastBalance();
     this.balance.filled = 0;
+    this.maxPrice = 0;
+    this.currentPrice = null;
     this.purchasePrice = null;
     this.orderId = null;
     this.log(`Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`,
@@ -94,7 +96,7 @@ class Currency {
       await db.createOrder(order);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
+        base: this.base, quantity: this.balance.crypto, priceBought: order.price,
       });      
       return order;
     } else {
@@ -105,12 +107,12 @@ class Currency {
         await db.createOrder(status);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
+          base: this.base, quantity: this.balance.crypto, priceBought: order.price,
         });
       } else if (this.balance.filled) {
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.filled, priceBought: this.purchasePrice,
+          base: this.base, quantity: this.balance.filled, priceBought: order.price,
         });
       }
       return status;
@@ -247,9 +249,9 @@ class Currency {
     return marketData.data;
   }
 
-  async previousOpenOrder() {
-    return await db.getOpenOrder();
-  }
+  // async previousOpenOrder() {
+  //   return await db.getOpenOrder();
+  // }
 
   /**
    * Adds or updates (if greater than current max price) Max Price for Currency

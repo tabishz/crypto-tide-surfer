@@ -89,3 +89,14 @@ services:
 volumes:
   mongo_data:
 ```
+
+#### Useful MongoDB Queries
+
+```js
+var total=0;
+db.getCollection('ledger').find({PnL: {$exists:true}}).forEach(doc => {
+    total = total + doc.PnL;
+    print(`${doc.crypto}/${doc.base}\t${new Date(doc.timestamp).toLocaleString()}\t${doc.PnL}`);
+});
+print(`Total: ${total.toFixed(3)}%`);
+```
