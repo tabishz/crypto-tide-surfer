@@ -8,7 +8,7 @@ const ccxt = require(exchangeLibrary);
 const axios = require('axios');
 
 const db = require('./db');
-const cfg = require('./config');
+const config = require('./config');
 
 const exchange = new ccxt.binance({
   apiKey: process.env.API_KEY,
@@ -25,39 +25,43 @@ class Currency {
 
   async initialize() {
     await this.getBalances();
-    this.log(`Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`);
+    await this.getLastBalance();
+    this.balance.filled = 0;
+    this.purchasePrice = null;
+    this.orderId = null;
+    this.log(`Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`,
+      'initialize');
     return;
   }
 
-  async buy(price, amount) {
-    const order = await this.limitBuy(price, amount);
-    this.log(`Purchasing ${amount} ${this.crypto} @ ${price} ${this.base}`);
+  async buy(price, quantity) {
+    const order = await this.limitBuy(price, quantity);
+    this.log(`Purchasing ${quantity} ${this.crypto} @ ${price} ${this.base}`);
     if (order.status !== 'closed') {
       const cancelled = await this.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
         return cancelled;
       } else {
-        return false;
+        return {status: false};
       }
     }
     this.orderId = order.id;
-    this.purchasePrice = order.price;
+    this.purchasePrice = parseFloat(order.price);
     return order;
   }
 
-  async sell(price, amount) {
-    const order = await this.limitSell(price, amount);
-    this.log(`Selling ${amount/price} ${this.crypto} for ${price}`);
+  async sell(price, quantity) {
+    const order = await this.limitSell(price, quantity);
     if (order.status !== 'closed') {
       const cancelled = await this.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
         return cancelled;
       } else {
-        return false;
+        return {status: false};
       }
+    } else if (order.status == 'closed') {
+      this.log(`Sold ${quantity} ${this.crypto} for ${price} ${this.base}`, 'sell');
     }
-    this.purchasePrice = null;
-    this.orderId = null;
     return order;
   }
 
@@ -79,28 +83,26 @@ class Currency {
    * This function places the limit order to buy crypto quantity at given price limit
    * Also adds info to Database
    * @param {Number} price limit price at which to buy crypto
-   * @param {Number} amount quantity of crypto to buy
+   * @param {Number} quantity quantity of crypto to buy
    * @returns Object of order details
    */
-  async limitBuy(price, amount) {
-    const order = await exchange.createLimitBuyOrder(this.pair, amount, price);
+  async limitBuy(price, quantity) {
+    const order = await exchange.createLimitBuyOrder(this.pair, quantity, price);
     if (order.status === 'closed') {
       this.balance.crypto = order.filled;
       this.balance.base = this.balance.base - order.cost;
       await db.createOrder(order);
-      await db.newTrackOrder(this.pair, amount, order.cost, order.id);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
         base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
       });      
       return order;
     } else {
-      const status = await this.checkOrderStatus(order.id, cfg.order.wait, cfg.order.intervals);
+      const status = await this.checkOrderStatus(order.id, config.order.wait, config.order.intervals);
       if (status.status === 'closed') {
         this.balance.crypto = order.filled;
         this.balance.base = this.balance.base - order.cost;
         await db.createOrder(status);
-        await db.newTrackOrder(this.pair, amount, status.cost, status.id);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
           base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
@@ -122,36 +124,32 @@ class Currency {
    * @param {Number} amount quantity of crypto to sell
    * @returns Object of order details
    */
-  async limitSell(price, amount) {
-    let trackOrder = await db.newTrackOrder(this.pair, amount, price);
-    if (trackOrder) trackOrder = trackOrder.toObject();
-    const order = await exchange.createLimitSellOrder(this.pair, amount, price);
+  async limitSell(price, quantity) {
+    const order = await exchange.createLimitSellOrder(this.pair, quantity, price);
     if (order.status === 'closed') {
       this.balance.crypto = 0;
       this.balance.base = this.balance.base + order.cost;
       await db.createOrder(order);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
+        base: this.base, quantity: quantity, priceBought: this.purchasePrice,
       });
-      await db.closeTrackOrder(trackOrder.id);
       return order;
     } else {
       await db.createOrder(order);
-      const status = await this.checkOrderStatus(order.id, cfg.order.wait, cfg.order.intervals);
+      const status = await this.checkOrderStatus(order.id, config.order.wait, config.order.intervals);
       if (status.status === 'closed') {
         this.balance.crypto = 0;
         this.balance.base = this.balance.base + order.cost;
         await db.updateOrder(order.id, status);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
+          base: this.base, quantity: quantity, priceBought: this.purchasePrice,
         });
-        await db.closeTrackOrder(trackOrder.id);
       } else if (this.balance.filled) {
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.balance.crypto, priceBought: this.purchasePrice,
+          base: this.base, quantity: this.balance.filled, priceBought: this.purchasePrice,
         });
       }
       return status;
@@ -176,16 +174,14 @@ class Currency {
   }
 
   async decideAmount() {
-    await this.getBalances();
-    await this.getLastBalance();
-    if (this.lastBalance >= cfg.minAmount && this.lastBalance <= cfg.maxAmount) {
+    if (this.lastBalance >= config.minAmount && this.lastBalance <= config.maxAmount) {
       return this.lastBalance;
     }
-    if (this.balance.base < cfg.minAmount) return 0;
-    if (this.balance.base >= cfg.minAmount && this.balance.base <= cfg.maxAmount) {
+    if (this.balance.base < config.minAmount) return 0;
+    if (this.balance.base >= config.minAmount && this.balance.base <= config.maxAmount) {
       return this.balance.base;
     }
-    if (this.balance.base > cfg.maxAmount) return cfg.maxAmount;
+    if (this.balance.base > config.maxAmount) return config.maxAmount;
   }
 
   async decideQuantityToBuy() {
@@ -197,9 +193,9 @@ class Currency {
 
   async determineStopLoss() {
     if (this.maxPrice > this.purchasePrice) {
-      this.stopLossPrice = this.maxPrice * (1 - cfg.runningStopLoss);
+      this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(config.runningStopLoss));
     } else {
-      this.stopLossPrice = this.purchasePrice * (1 - cfg.initialStopLoss);
+      this.stopLossPrice = parseFloat(this.purchasePrice) * (1 - parseFloat(config.initialStopLoss));
     }
     return this.stopLossPrice;
   }
@@ -208,7 +204,7 @@ class Currency {
     let i = 1;
     let order;
     return(async(resolve) => {
-      while (i <= intervals || order?.status == 'closed' ) {
+      while (i <= intervals || order?.status !== 'closed' ) {
         order = await this.orderStatus(orderId);
         i++;
         this.balance.filled = order?.filled;
@@ -217,6 +213,8 @@ class Currency {
           if (order.side == 'buy') this.balance.crypto = order.filled;
           this.balance.filled = order.filled;
         }
+        this.log(`(${i}) ${order.filled}/${order.remaining} ${this.crypto} Order Filled`,
+          'checkOrderStatus');
         if (i >= intervals || order.status === 'closed') {
           resolve(order);
         }
@@ -243,8 +241,8 @@ class Currency {
    */
   async getMarketData() {
     const url =
-      `${cfg.priceApiUrl}/klines?symbol=${this.crypto}${this.base}` +
-      `&interval=${cfg.evalTime}&limit=${cfg.evalLimit}`;
+      `${config.priceApiUrl}/klines?symbol=${this.crypto}${this.base}` +
+      `&interval=${config.evalTime}&limit=${config.evalLimit}`;
     const marketData = await axios.get(url);
     return marketData.data;
   }
@@ -255,33 +253,24 @@ class Currency {
 
   /**
    * Adds or updates (if greater than current max price) Max Price for Currency
-   * @param {Float} price new price of the crypto currency
-   * @param {ObjectID} uid mongoDB document ID
    * @returns
    */
-  async updatePrice(uid) {
+  async updatePrice() {
     const newPrice = await this.getPrice();
-    this.currentPrice = newPrice;
     if (this.maxPrice) {
       if (newPrice > this.maxPrice) {
         this.maxPrice = newPrice;
         await this.determineStopLoss();
-        const updated = await db.setMaxPrice(uid, newPrice);
-        if (updated) {
-          this.log(`Updated Max Price for ${this.pair}: ${this.maxPrice.toString()}`);
-          return newPrice;
-        }
+        this.log(`Updated Max Price for ${this.pair}: ${this.maxPrice.toString()}` +
+          ` Determined stopLoss: ${this.stopLossPrice}`, 'updatePrice');
       }
     } else {
-      const updated = await db.setMaxPrice(uid, newPrice);
       this.maxPrice = newPrice;
       await this.determineStopLoss();
-      if (updated) {
-        this.log(`Added Max Price for ${this.pair}: ${newPrice.toString()}`);
-        return newPrice;
-      }
+      this.log(`Added Max Price for ${this.pair}: ${newPrice.toString()}` + 
+        ` Determined stopLoss: ${this.stopLossPrice}`, 'updatePrice');
     }
-    return this.currentPrice;
+    return newPrice;
   }
 
    /**
@@ -291,57 +280,71 @@ class Currency {
   async purchaseCycle () {
     const baseAmount = await this.decideAmount();
     this.log(
-      `Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`
+      `Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`,
+      'purchaseCycle'
     );
-    const goAhead = await this.followPrice();
-    if (goAhead === true) {
-      await this.getPrice();
-      const thresholdPrice = this.currentPrice * (1 + cfg.buyThreshold);
-      let quantity = await this.decideQuantityToBuy();
-      if (this.balance.filled) quantity = quantity - this.balance.filled;
-      const order = await this.buy(thresholdPrice, quantity);
-      if (order.status == 'CANCELED') {
-        await this.purchaseCycle();
-      } else if (order.status == 'closed') {
-        return order;
+    var order, thresholdPrice, quantity;
+    return new Promise( async(resolve) => {
+      while (order?.status !== 'closed') {
+        await this.followPrice();
+        await this.getPrice();
+        thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
+        this.log(`Threshold Price: ${thresholdPrice}, currentPrice: ${this.currentPrice} (${config.buyThreshold})`, 'purchaseCyle');
+        quantity = await this.decideQuantityToBuy();
+        if (this.balance.filled) quantity = quantity - this.balance.filled;
+        order = await this.buy(thresholdPrice, quantity);
+        if (order.status == 'closed') {
+          resolve(order);
+        }
       }
-    }
+    });
   };
 
   /**
    * This functions keeps checking for price updates and sells at stop loss thresholds
    * @returns Object of order details
    */
-  async sellCycle () {
+  sellCycle () {
     this.log(
-      `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`
+      `Ready to sell ${this.balance.crypto} ${this.crypto} for ${this.base}`,
+      'sellCycle'
     );
-    await this.updatePrice(this.orderId);
-    await this.signalToSell();
-    const order = await this.sell(this.currentPrice, this.balance.crypto);
-    if (order.status == 'CANCELED') {
-      await this.sellCycle();
-    } else if (order.status == 'closed') {
-      return order;
-    }
-    return order;
+    var order = {status: 'staged'};
+    return new Promise(async(resolve) => {
+      while (order.status !== 'closed') {
+        // await this.updatePrice();
+        this.log('Checking for stopLoss price', 'sellCycle');
+        await this.signalToSell();
+        if (this.balance.filled) {
+          this.log(`${this.crypto} Sold: ${this.balance.filled}, Remaining: `+
+            `${this.balance.filled}`, 'sellCycle');
+        }
+        order = await this.sell(this.currentPrice, this.balance.crypto);
+        if (order.status == 'closed') {
+          resolve(order);
+        }
+      }
+    });
   };
 
   signalToSell() {
     return new Promise (async (resolve) => {
-      while (this.currentPrice > this.stopLossPrice * (1 + cfg.sellThreshold)) {
-        await this.updatePrice(this.orderId);
+      await this.determineStopLoss();
+      this.log(`currentPrice: ${this.currentPrice} | stopLossPrice: ${this.stopLossPrice}`,
+        'signalToSell');
+      while (this.currentPrice >= this.stopLossPrice) {
+        await this.updatePrice();
         let diff = (this.currentPrice - this.purchasePrice) / this.purchasePrice * 100;
         this.log(
           `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at `+
           `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] `+
-          `StopLoss @ ${this.stopLossPrice} ${this.base}`
+          `StopLoss @ ${this.stopLossPrice} ${this.base}`, 'signalToSell'
         );
-        if (this.currentPrice <= this.stopLossPrice * (1 + cfg.sellThreshold)) {
+        if (this.currentPrice <= this.stopLossPrice) {
           // create stopLoss order
           resolve(true);
         }
-        await this.delay(cfg.runningInterval);
+        await this.delay(config.runningInterval);
       }
     });
   }
@@ -352,7 +355,7 @@ class Currency {
    */
   async getPrice() {
     let info = await axios.get(
-      `${cfg.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
+      `${config.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
     );
     this.currentPrice = parseFloat(info.data.price);
     return this.currentPrice;
@@ -362,7 +365,8 @@ class Currency {
    * Simple log with timestamp
    * @param {String} msg
    */
-  log(msg) {
+  log(msg, tag=null) {
+    if (tag) msg = `[${tag}] ${msg}`;
     console.log(new Date().toLocaleString(), msg);
   }
 
@@ -379,27 +383,27 @@ class Currency {
         const market = await this.evaluateChart(chart);
         this.log(
           `${this.crypto}=${this.currentPrice}  Change Sum: `+
-          `${(market.change * 100).toFixed(4)}% (need ${(cfg.minChange * 100)}%)|` +
-          ` Overall Change over last ${cfg.evalTime}*${cfg.evalLimit}: ` +
-          `${(market.overallChange * 100).toFixed(4)}% (need ${cfg.minOverallChange * 100}%)`
+          `${(market.change * 100).toFixed(4)}% (>= ${(config.minChange * 100)}%)|` +
+          ` Overall Change over last ${config.evalTime}*${config.evalLimit}: ` +
+          `${(market.overallChange * 100).toFixed(4)}% (>= ${config.minOverallChange * 100}%)`
         );
         conditionMet = this.buyCondition(market);
         if (conditionMet) resolve(true);
-        await this.delay(cfg.followInterval);
+        await this.delay(config.followInterval);
       }
     });
   }
 
   buyCondition(rate) {
-    if (cfg.bothChangeSatisfy) {
+    if (config.bothChangeSatisfy) {
       // Both changes must be greater than their minimum required values
-      if (rate.change > cfg.minChange && rate.overallChange > cfg.minOverallChange) {
+      if (rate.change > config.minChange && rate.overallChange > config.minOverallChange) {
         this.log('Conditions to Purchase are met!');
         return true;
       }
     }
     // Either of the changes must be greater than their minimum required values
-    if (rate.change > cfg.minChange || rate.overallChange > cfg.minOverallChange) {
+    if (rate.change > config.minChange || rate.overallChange > config.minOverallChange) {
       this.log('One of the Condition to Purchase is met!');
       return true;
     }
@@ -420,7 +424,7 @@ class Currency {
     change.forEach((d) => (difference += d));
     const changeOverEvaluation =
       (data[data.length - 1][4] - data[0][1]) / data[data.length - 1][4];
-    this.currentPrice = data[data.length - 1][4];
+    this.currentPrice = parseFloat(data[data.length - 1][4]);
     return { change: difference, overallChange: changeOverEvaluation };
   }
 

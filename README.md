@@ -24,7 +24,7 @@ module.exports = {
       MIN_AMOUNT: 10,
       MAX_AMOUNT: 50,
       INIT_STOP_LOSS: 0.015,
-      RUN_STOP_LOST: 0.018,
+      RUN_STOP_LOSS: 0.018,
       SELL_THRESHOLD: 0.0015,
       BUY_THRESHOLD: 0.0015,
       RUNNING_INTERVAL: 10, // seconds
@@ -49,7 +49,7 @@ module.exports = {
       MIN_AMOUNT: 10,
       MAX_AMOUNT: 50,
       INIT_STOP_LOSS: 0.015,
-      RUN_STOP_LOST: 0.018,
+      RUN_STOP_LOSS: 0.018,
       SELL_THRESHOLD: 0.0015,
       BUY_THRESHOLD: 0.0015,
       RUNNING_INTERVAL: 10, // seconds
