@@ -41,7 +41,7 @@ const orderSchema = new mongoose.Schema(
     id: String,
     clientOrderId: String,
     timestamp: Number,
-    datetime: String,
+    datetime: Date,
     symbol: String,
     type: String,
     timeInForce: String,
