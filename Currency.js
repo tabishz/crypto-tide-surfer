@@ -93,31 +93,29 @@ class Currency {
   async limitBuy(price, quantity) {
     const order = await exchange.createLimitBuyOrder(this.pair, quantity, price);
     if (order.status === 'closed') {
-      this.quantity = order.filled;
       this.remaining = 0;
       this.balance.base = this.balance.base - order.cost;
       await db.createOrder(order);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: this.filled, priceBought: order.price,
+        base: this.base, quantity: this.quantity, priceBought: order.price,
       });      
       return order;
     } else {
       const status = await this.checkOrderStatus(order.id, config.order.wait, config.order.intervals);
       if (status.status === 'closed') {
-        this.quantity = order.filled;
         this.remaining = 0;
         this.balance.base = this.balance.base - order.cost;
         await db.createOrder(status);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.filled, priceBought: order.price,
+          base: this.base, quantity: status.filled, priceBought: order.price,
         });
       } else if (this.filled) {
         this.remaining = status.remaining;
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.filled, priceBought: order.price,
+          base: this.base, quantity: status.filled, priceBought: order.price,
         });
       }
       return status;
@@ -139,7 +137,7 @@ class Currency {
       await db.createOrder(order);
       await db.updateLedger({
         cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-        base: this.base, quantity: quantity, priceBought: this.purchasePrice,
+        base: this.base, quantity: order.filled, priceBought: this.purchasePrice,
       });
       return order;
     } else {
@@ -151,13 +149,13 @@ class Currency {
         await db.updateOrder(order.id, status);
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: quantity, priceBought: this.purchasePrice,
+          base: this.base, quantity: status.filled, priceBought: this.purchasePrice,
         });
       } else if (this.filled) {
-        this.remaining = order.remaining;
+        this.remaining = status.remaining;
         await db.updateLedger({
           cost: order.cost, transaction: order.side, crypto: this.crypto, price: order.price,
-          base: this.base, quantity: this.filled, priceBought: this.purchasePrice,
+          base: this.base, quantity: status.filled, priceBought: this.purchasePrice,
         });
       }
       return status;
