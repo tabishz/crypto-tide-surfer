@@ -67,6 +67,33 @@ module.exports = {
 };
 ```
 
+### Environment Variables
+| ENV Variable | Description |
+| ------------ | ----------- |
+| *NODE_ENV*   | 'dev' dry run, 'prd' real transtions |
+| *API_KEY*    | Exchange API Key |
+| *API_SECRET* | Exchange API Secret |
+| *DB_HOST*    | Database hostname or IP |
+| *DB_NAME*    | Database Name in MongoDB |
+| *DB_URI*     | Database URI |
+| *PRICE_URL*  | Price API Base URL |
+| *MIN_AMOUNT* | Minimum Amount to spend for a buy order |
+| *MAX_AMOUNT* | Maximum Amount to spend for a buy order |
+| *INIT_STOP_LOSS* | Initial Stop Loss in Decimal % |
+| *RUN_STOP_LOSS* | Running Stop Loss (once price goes over purchase price) |
+| *SELL_THRESHOLD* | Decimal % decrease room to make sure sell order goes through |
+| *BUY_THRESHOLD* | Decimal % increase room to make sure buy order goes through |
+| *RUNNING_INTERVAL* | Number of seconds between price pull when looking to sell |
+| *FOLLOW_INTERVAL* | Number of seconds between price pull when looking to purchase |
+| *COOLOFF_PERIOD* | # of Minutes wait before buying again after selling  |
+| *MIN_CHANGE* | Minimum Decimal % positive change to buy |
+| *MIN_OVERALL_CHANGE* | Minimum Decimal % positive change over period to buy |
+| *SATISFY_BOTH* | Whether to satisfy both minimums in _MIN_CHANGE_ and _MIN_OVERALL_CHANGE_ |
+| *EVAL_TIME* | Evaluation candle period size |
+| *EVAL_LIMIT* | Number of Candles to Evaluate |
+| *ORDER_WAIT* | Milliseconds wait between checking if order got processed |
+| *ORDER_INTERVALS* | Numbers of times to check order status before cancelling it |
+
 ## MongoDB
 Docker-compose.yaml
 
