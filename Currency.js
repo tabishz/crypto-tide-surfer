@@ -42,7 +42,7 @@ class Currency {
     const order = await this.limitBuy(price, quantity);
     this.log(`Purchasing ${quantity} ${this.crypto} @ ${price} ${this.base}`);
     if (order.status !== 'closed') {
-      const cancelled = await this.cancelOrder(order.id);
+      const cancelled = await exchange.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
         return cancelled;
       } else {
@@ -57,7 +57,7 @@ class Currency {
   async sell(price, quantity) {
     const order = await this.limitSell(price, quantity);
     if (order.status !== 'closed') {
-      const cancelled = await this.cancelOrder(order.id);
+      const cancelled = await exchange.cancelOrder(order.id);
       if (cancelled.status === 'CANCELED') {
         return cancelled;
       } else {
@@ -230,15 +230,9 @@ class Currency {
   }
 
   async orderStatus(orderId) {
-    let order = await exchange.fetchOrder(orderId);
+    let order = await exchange.fetchOrder(orderId, this.crypto);
     // order = JSON.parse(order);
-    return order.status;
-  }
-
-  async cancelOrder(orderId) {
-    let cancelled = await exchange.cancelOrder(orderId.toString());
-    // return JSON.parse(cancelled);
-    return cancelled;
+    return order;
   }
 
   /**
