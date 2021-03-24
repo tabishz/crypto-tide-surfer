@@ -59,7 +59,11 @@ class Currency {
       this.log(`Bought ${quantity} ${this.crypto} for ${price} ${this.base}`, 'buy');
     }
     this.orderId = order.id;
-    this.purchasePrice = parseFloat(order.price);
+    if (order.average) {
+      this.purchasePrice = parseFloat(order.average);
+    } else {
+      this.purchasePrice = parseFloat(order.price);
+    }
     return order;
   }
 
@@ -110,7 +114,7 @@ class Currency {
     if (order.status === 'closed') {
       this.remaining = order.amount;
       this.balance.base = this.balance.base - order.cost;
-      this.purchased = order.amount;
+      this.purchased = parseFloat(order.amount) * (1 - parseFloat(config.exchange.fees));
       await db.updateLedger({
         cost: order.cost,
         transaction: order.side,
@@ -131,7 +135,7 @@ class Currency {
       if (status.status === 'closed') {
         this.remaining = order.amount;
         this.balance.base = this.balance.base - status.cost;
-        this.purchased = order.amount;
+        this.purchased = parseFloat(order.amount) * (1 - parseFloat(config.exchange.fees));
         await db.createOrder(status);
         await db.updateLedger({
           cost: status.cost,
@@ -270,9 +274,9 @@ class Currency {
   checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
     let order = { status: 'checking' };
-    this.log('Checking order status.', 'checkOrderStatus');
+    this.log(`Checking order status (id: ${orderId}).`, 'checkOrderStatus');
     return new Promise( async (resolve) => {
-      while (i <= intervals || order.status !== 'closed') {
+      while (i <= intervals && order.status !== 'closed') {
         order = await this.orderStatus(orderId);
         i++;
         this.filled = order?.filled;
