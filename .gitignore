@@ -1,5 +1,5 @@
 /index.js
 /node_modules
 .env
-/app-backup.js
-/test.js
+app-backup.js
+test.js
