@@ -32,6 +32,7 @@ class Currency {
     this.maxPrice = 0;
     this.quantity = 0;
     this.remaining = 0;
+    this.purchased = 0;
     this.currentPrice = null;
     this.purchasePrice = null;
     this.orderId = null;
@@ -107,8 +108,9 @@ class Currency {
     this.log(`OrderId: ${order.id} (${order.status}) for ${this.pair} placed.`, 'limitBuy');
     await db.createOrder(order);
     if (order.status === 'closed') {
-      this.remaining = 0;
+      this.remaining = order.amount;
       this.balance.base = this.balance.base - order.cost;
+      this.purchased = order.amount;
       await db.updateLedger({
         cost: order.cost,
         transaction: order.side,
@@ -127,8 +129,9 @@ class Currency {
       );
       this.log(`orderStatus: ${JSON.stringify(status)}`, 'limitBuy');
       if (status.status === 'closed') {
-        this.remaining = 0;
+        this.remaining = order.amount;
         this.balance.base = this.balance.base - status.cost;
+        this.purchased = order.amount;
         await db.createOrder(status);
         await db.updateLedger({
           cost: status.cost,
@@ -141,6 +144,7 @@ class Currency {
         });
       } else if (this.filled) {
         this.remaining = status.remaining;
+        this.purchased = this.purchased + status.filled;
         await db.updateLedger({
           cost: status.cost,
           transaction: status.side,
@@ -290,9 +294,13 @@ class Currency {
   }
 
   async orderStatus(orderId, symbol=this.pair) {
-    const order = await exchange.fetchOrder(orderId, symbol);
-    // order = JSON.parse(order);
-    return order;
+    try {
+      const order = await exchange.fetchOrder(orderId, symbol);
+      return order;
+    } catch (error) {
+      this.log(`Error: ${JSON.stringify(error)}`, 'orderStatus');
+      return {status: 'unknown'};
+    }
   }
   
   async openOrders(symbol=this.pair, limit=1) {
@@ -384,10 +392,10 @@ class Currency {
    * @returns Object of order details
    */
   sellCycle() {
-    this.log(`Ready to sell ${this.quantity} ${this.crypto} for ${this.base}`, 'sellCycle');
+    this.remaining = this.purchased;
+    this.log(`Ready to sell ${this.remaining} ${this.crypto} for ${this.base}`, 'sellCycle');
     var order = { status: 'staged' };
-    var thresholdPrice;
-    this.remaining = this.quantity;
+    var thresholdPrice;    
     return new Promise(async (resolve) => {
       while (order.status !== 'closed') {
         // await this.updatePrice();
