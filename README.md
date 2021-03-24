@@ -93,6 +93,8 @@ module.exports = {
 | **EVAL_LIMIT** | Number of Candles to Evaluate |
 | **ORDER_WAIT** | Milliseconds wait between checking if order got processed |
 | **ORDER_INTERVALS** | Numbers of times to check order status before cancelling it |
+| **PORT** | REST API Port |
+| **APP_NAME** | Name of REST API App |
 
 ## MongoDB
 Docker-compose.yaml
