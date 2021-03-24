@@ -10,7 +10,7 @@ var orderRunning = 0;
 var highPrice;
 var profitLoss;
 var actualBuyPrice;
-var orderId;
+var strategy;
 
 var conn = mysql.createPool({
   connectionLimit: 20,
@@ -49,11 +49,9 @@ const tick = async (binanceClient) => {
       variance = 0;
     }
 
-    // Buy If Last 5 Min is Positive Slope +2%
     const marketResult = await Promise.all([
-      axios.get(
-        `https://www.binance.com/api/v3/klines?symbol=${config.asset}${config.base}&interval=${config.shortEvalTime}&limit=${config.evalLimit}`
-      ),
+      axios.get(`https://www.binance.com/api/v3/klines?symbol=${config.asset}${config.base}&interval=${config.shortEvalTime}&limit=${config.evalLimit}`),
+      axios.get(`https://www.binance.com/api/v3/klines?symbol=${config.asset}${config.base}&interval=${config.longEvalTime}&limit=${config.evalLimit}`)
     ]);
 
     function evaluateChart(data) {
@@ -69,6 +67,12 @@ const tick = async (binanceClient) => {
     }
 
     var changeResult = evaluateChart(marketResult[0].data);
+
+    // Long Interval Price (Lowest Price)
+    const longIntPriceL = marketResult[1].data[2][3];
+    const slongIntPriceL = marketResult[1].data[1][3];
+    const tlongIntPriceL = marketResult[1].data[0][3];
+    const longIntPriceAverage = (parseFloat(longIntPriceL) + parseFloat(slongIntPriceL) + parseFloat(tlongIntPriceL)) / 3;
 
     /*     const intervalPriceOpen = marketResult[0].data[2][1];
     const intervalPriceHigh = marketResult[0].data[2][2];
@@ -100,7 +104,12 @@ const tick = async (binanceClient) => {
 
     if (start == 0) {
       console.log(`${timeStamp}: Evaluating the market of ${market}`);
-      if (changeResult.change >= config.minChange) {
+      if (config.strategy == 'short') {
+            strategy = 1;
+      } else if (config.strategy == 'long' && marketPrice < longIntPriceAverage) {
+            strategy = 1;
+      }
+      if (changeResult.change >= config.minChange && strategy) {
         console.log(`
             ${timeStamp}: Buy Indicator for ${market} @ ${marketPrice}
             % Change in Last Interval is ${(changeResult.change * 100).toFixed(3)}%
@@ -148,23 +157,23 @@ const tick = async (binanceClient) => {
       const orderStatus = await binanceClient.createLimitSellOrder(
         market,
         sellVolume,
-        marketPrice
+        profitLoss
       );
       if (marketPrice > actualBuyPrice) {
-        PnL = assetBalance * marketPrice - assetBalance * actualBuyPrice;
+        PnL = assetBalance * profitLoss - assetBalance * actualBuyPrice;
         console.log(
-          `${timeStamp}: Order ID: ${orderStatus.id} Status: ${orderStatus.status} Sell Order Executed [Profit] for ${assetBalance} ${config.asset} @ ${marketPrice} ${config.base} - Profit: $${PnL}`
+          `${timeStamp}: Order ID: ${orderStatus.id} Status: ${orderStatus.status} Sell Order Executed [Profit] for ${assetBalance} ${config.asset} @ ${profitLoss} ${config.base} - Profit: $${PnL}`
         );
-        var sql = `INSERT INTO sell (orderid, pair, price, qty, PnL) VALUES (${orderStatus.id}, '${market}', ${marketPrice}, ${assetBalance}, ${PnL})`;
+        var sql = `INSERT INTO sell (orderid, pair, price, qty, PnL) VALUES (${orderStatus.id}, '${market}', ${profitLoss}, ${assetBalance}, ${PnL})`;
         conn.query(sql, function (err, result) {
             if (err) throw err;
         });
       } else {
-        PnL = assetBalance * actualBuyPrice - assetBalance * marketPrice;
+        PnL = assetBalance * actualBuyPrice - assetBalance * profitLoss;
         console.log(
-          `${timeStamp}: Order ID: ${orderStatus.id} Status: ${orderStatus.status} Sell Order Executed [Loss] for ${assetBalance} ${config.asset} @ ${marketPrice} ${config.base} - Loss: $${PnL}`
+          `${timeStamp}: Order ID: ${orderStatus.id} Status: ${orderStatus.status} Sell Order Executed [Loss] for ${assetBalance} ${config.asset} @ ${profitLoss} ${config.base} - Loss: $${PnL}`
         );
-        var sql = `INSERT INTO sell (orderid, pair, price, qty, PnL) VALUES (${orderStatus.id}, '${market}', ${marketPrice}, ${assetBalance}, -${PnL})`;
+        var sql = `INSERT INTO sell (orderid, pair, price, qty, PnL) VALUES (${orderStatus.id}, '${market}', ${profitLoss}, ${assetBalance}, -${PnL})`;
         conn.query(sql, function (err, result) {
             if (err) throw err;
         });
@@ -178,7 +187,7 @@ const tick = async (binanceClient) => {
       console.log(
         `${timeStamp}: Current Price is ${marketPrice}. Variance: ${variance.toFixed(
           2
-        )}% | Sum of Last ${config.evalLimit} Candles: ${(changeResult.change * 100).toFixed(3)}%`
+        )}% | Sum of Last ${config.evalLimit} Short Candles: ${(changeResult.change * 100).toFixed(3)}% | Average of Lows in Last ${config.evalLimit} Long Candles: ${longIntPriceAverage.toFixed(8)}`
       );
     } else {
       console.log(`${timeStamp}: [1] Sell Order for ${sellVolume} ${market} in Progress...

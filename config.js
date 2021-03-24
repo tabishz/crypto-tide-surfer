@@ -1,16 +1,17 @@
 const config = {
-    asset: 'HOT',
+    asset: 'COTI',
     base: 'USDT',
-    percentSpend: 0.5,
+    percentSpend: 1,
     initialStopLoss: 2, // Percentage
-    runningStopLoss: 1, // Percentage
-    tickInterval: 10000,
+    runningStopLoss: 0.6, // Percentage
+    tickInterval: 5000,
     evalLimit: 3,
     shortEvalTime: '1m',
     shortChange: 0.25,
     longEvalTime: '15m',
     longChange: 0.5,
-    minChange: 0.0050
+    strategy: 'long',
+    minChange: 0.0040
 }
 
 module.exports = config;
