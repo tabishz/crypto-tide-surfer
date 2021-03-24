@@ -58,8 +58,51 @@ const orderSchema = new mongoose.Schema(
   { collection: config.db.order }
 );
 
+const trackSchema = new mongoose.Schema({
+  id: Number,
+  orderId: String,
+  mode: String,
+  symbol: String,
+  purchasePrice: Number,
+  maxPrice: Number,
+  quantity: Number,
+  remaining: Number,
+  purchased: Number,
+},
+{
+  collection: config.db.track,
+  timestamps: true,
+});
+
 const Ledger = new mongoose.model('Ledger', ledgerSchema);
 const Order = new mongoose.model('Order', orderSchema);
+const Tracker = new mongoose.model('Tracker', trackSchema);
+
+const checkTracker = async (symbol) => {
+  try {
+    const order = await Tracker.findOne({id: 1, symbol: symbol}).exec();
+    if (order) {
+      return order.toObject();
+    } else {
+      const newTrack = new Tracker({id: 1, symbol: symbol, mode: 'new'});
+      await newTrack.save();
+    }
+    return order;
+  } catch (error) {
+    log(`Unable to get Tracker Order. ${JSON.stringify(error)}`);
+    throw error;
+  }
+}
+
+const updateTracker = async (updates) => {
+  try {
+    await Tracker.updateOne({id: 1}, updates);
+    return true;
+  } catch (error) {
+    log(`Unable to update Tracker Order. ${JSON.stringify(error)}`);
+    throw error;
+  }
+}
 
 /**
  * updates an order in mongoDB by replacing old one
@@ -152,6 +195,8 @@ const log = (msg) => {
 };
 
 module.exports = {
+  checkTracker,
+  updateTracker,
   updateOrder,
   updateLedger,
   createOrder,
