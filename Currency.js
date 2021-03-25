@@ -464,7 +464,7 @@ class Currency {
         this.log(
           `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at ` +
             `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] ` +
-            `StopLoss @ ${this.stopLossPrice} ${this.base}`,
+            `StopLoss @ ${this.stopLossPrice.toFixed(4)} ${this.base}`,
           'signalToSell'
         );
         if (this.currentPrice <= this.stopLossPrice) {

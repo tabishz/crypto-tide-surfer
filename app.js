@@ -16,7 +16,8 @@ async function main () {
     await cc.initialize();
     if (cc.mode != 'sell') await cc.purchaseCycle();
     await cc.sellCycle();
-    cc.log('Buy/Sell Cycle completed. Cooling off...', 'main');
+    cc.log(`Buy/Sell Cycle completed. Cooling off... (${config.coolOffPeriod/60000} minutes)`,
+      'main');
     await cc.delay(config.coolOffPeriod);
   }
 };
