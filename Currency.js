@@ -26,20 +26,22 @@ class Currency {
   }
 
   async initialize() {
-    await this.getBalances();
-    await this.getLastBalance();
     this.mode = 'start';
     this.filled = 0;
     this.maxPrice = 0;
     this.quantity = 0;
     this.remaining = 0;
     this.purchased = 0;
+    this.trackedBalance = 0;
     this.currentPrice = null;
     this.purchasePrice = null;
     this.orderId = null;
+    await this.getBalances();
+    await this.getLastBalance();
     await this.checkTracker();
     this.log(
-      `Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base}`,
+      `Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base} `+ 
+      `[TrackedBalance: ${this.trackedBalance}]`,
       'initialize'
     );
     if (this.mode == 'sell') {
@@ -234,6 +236,13 @@ class Currency {
 
   async decideAmount() {
     if (
+      this.trackedBalance >= config.minAmount &&
+      this.trackedBalance <= config.maxAmount &&
+      this.trackedBalance <= this.balance.base
+    ) {
+      return this.trackedBalance;
+    }
+    if (
       this.lastBalance >= config.minAmount &&
       this.lastBalance <= config.maxAmount &&
       this.lastBalance <= this.balance.base
@@ -316,8 +325,14 @@ class Currency {
       this.log(`Cancelled order ${id}.`, 'cancelOrder');
       return true;
     } catch (error) {
-      this.log(`Unable to Cancel: ${JSON.stringify(error)}`, 'cancelOrder');
-      throw error;
+      const order = await this.orderStatus(id);
+      if (order.status == 'closed') {
+        // TODO: Update remaining quantity
+        return true;
+      } else {
+        this.log(`Unable to Cancel: ${JSON.stringify(error)}`, 'cancelOrder');
+        throw error;
+      }
     }
   }
 
@@ -372,13 +387,14 @@ class Currency {
    */
   async purchaseCycle() {
     const baseAmount = await this.decideAmount();
+    await this.getPrice();
     this.log(`Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`, 'purchaseCycle');
     var order = { status: 'new' };
     var thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
     this.quantity = await this.decideQuantityToBuy();
     this.remaining = this.quantity;
     return new Promise(async (resolve) => {
-      while (order.status !== 'closed') {
+      while (order.status !== 'closed' && this.quantityEnough(this.remaining, thresholdPrice)) {
         await this.followPrice();
         await this.getPrice();
         thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
@@ -395,6 +411,7 @@ class Currency {
         }
         order = await this.buy(thresholdPrice, this.remaining);
         if (order.status == 'closed' || !this.quantityEnough(this.remaining, thresholdPrice)) {
+          this.trackedBalance = order.cost;
           await this.updateTracker('sell');
           resolve(order);
         }
@@ -406,12 +423,13 @@ class Currency {
    * This functions keeps checking for price updates and sells at stop loss thresholds
    * @returns Object of order details
    */
-  sellCycle() {
+  async sellCycle() {
     this.log(`Ready to sell ${this.remaining} ${this.crypto} for ${this.base}`, 'sellCycle');
     var order = { status: 'staged' };
+    await this.getPrice();
     var thresholdPrice = this.currentPrice * (1 - parseFloat(config.sellThreshold));;
     return new Promise(async (resolve) => {
-      while (order.status !== 'closed') {
+      while (order.status !== 'closed' && this.quantityEnough(this.remaining, thresholdPrice)) {
         // await this.updatePrice();
         this.log('Checking for stopLoss price', 'sellCycle');
         await this.signalToSell();
@@ -424,6 +442,7 @@ class Currency {
         thresholdPrice = this.currentPrice * (1 - parseFloat(config.sellThreshold));
         order = await this.sell(thresholdPrice, this.remaining);
         if (order.status == 'closed' || !this.quantityEnough(this.remaining, thresholdPrice)) {
+          this.trackedBalance = order.cost;
           await this.updateTracker('buy');
           resolve(order);
         }
@@ -433,6 +452,7 @@ class Currency {
 
   signalToSell() {
     return new Promise(async (resolve) => {
+      await this.updatePrice();
       await this.determineStopLoss();
       this.log(
         `currentPrice: ${this.currentPrice} | stopLossPrice: ${this.stopLossPrice}`,
@@ -547,6 +567,7 @@ class Currency {
         this.orderId = tracked.orderId;
         this.mode = tracked.mode;
       }
+      this.trackedBalance = tracked.balance;
     } catch (error) {
       this.log(`Unable to get data. ${JSON.stringify(error)}`, 'checkTracker');
       throw error;
@@ -564,6 +585,7 @@ class Currency {
       quantity: this.quantity,
       remaining: this.remaining,
       purchased: this.purchased,
+      balance: this.trackedBalance,
     };
     try {
       await db.updateTracker(data);

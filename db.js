@@ -68,6 +68,7 @@ const trackSchema = new mongoose.Schema({
   quantity: Number,
   remaining: Number,
   purchased: Number,
+  balance: Number,
 },
 {
   collection: config.db.track,
