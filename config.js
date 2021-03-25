@@ -1,17 +1,33 @@
 const config = {
-    asset: 'COTI',
-    base: 'USDT',
-    percentSpend: 1,
-    initialStopLoss: 2, // Percentage
-    runningStopLoss: 0.6, // Percentage
-    tickInterval: 5000,
-    evalLimit: 3,
-    shortEvalTime: '1m',
-    shortChange: 0.25,
-    longEvalTime: '15m',
-    longChange: 0.5,
-    strategy: 'long',
-    minChange: 0.0040
-}
+  crypto: process.env.CRYPTO,
+  base: process.env.BASE,
+  minAmount: process.env.MIN_AMOUNT, // Minimum $ amount to use for purchases
+  maxAmount: process.env.MAX_AMOUNT, // Maximum $ amount to use for purchases
+  initialStopLoss: process.env.INIT_STOP_LOSS, // %age decimal 0.01 = 1%
+  runningStopLoss: process.env.RUN_STOP_LOSS, // %age decimal
+  sellThreshold: process.env.SELL_THRESHOLD, // %age closeness to stopLoss price when to place order
+  buyThreshold: process.env.BUY_THRESHOLD, // %age closeness to buy price when placing order
+  runningInterval: process.env.RUNNING_INTERVAL *1000, // milliseconds
+  followInterval: process.env.FOLLOW_INTERVAL *1000, // milliseconds
+  coolOffPeriod: process.env.COOLOFF_PERIOD *60*1000, // time to wait between selling and buying again
+  minChange: process.env.MIN_CHANGE, // Minimum % change in price over evaluation period to buy (0.01 = 1%)
+  minOverallChange: process.env.MIN_OVERALL_CHANGE, // Minimum % change between newest and oldest candle in price to buy (0.01 = 1%)
+  bothChangeSatisfy: process.env.SATISFY_BOTH, // both minChange and OverallChange must satisfy before buy
+  evalTime: process.env.EVAL_TIME,
+  evalLimit: process.env.EVAL_LIMIT,
+  priceApiUrl: process.env.PRICE_URL,
+  db: {
+    ledger: 'ledger',
+    orders: 'orders',
+    track: 'track',
+  },
+  exchange: {
+    fees: 0.001,
+  },
+  order: {
+    wait: process.env.ORDER_WAIT,
+    intervals: process.env.ORDER_INTERVALS,
+  }
+};
 
 module.exports = config;
