@@ -5,6 +5,7 @@ const router = require('./api/router');
 const http = require('http');
 const config = require('./config');
 const { Currency } = require('./Currency');
+const { telegram, message } = require('./api/telegram');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -21,6 +22,13 @@ async function main () {
     await cc.delay(config.coolOffPeriod);
   }
 };
+
+if (config.telegram.enabled) {
+  telegram.on('update', (update) => {
+    cc.log(`Msg Received: ${JSON.stringify(update)}`, 'Telegram');
+    message.reply(update.message, cc);
+  });
+}
 
 // REST API endpoint
 app.use(`/api`, router);

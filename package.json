@@ -10,7 +10,8 @@
     "axios": "^0.21.1",
     "ccxt": "^1.42.96",
     "express": "^4.17.1",
-    "mongoose": "^5.12.1"
+    "mongoose": "^5.12.1",
+    "telegram-bot-api": "^2.0.1"
   },
   "devDependencies": {
     "eslint": "^7.22.0",

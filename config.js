@@ -27,6 +27,12 @@ const config = {
   order: {
     wait: process.env.ORDER_WAIT,
     intervals: process.env.ORDER_INTERVALS,
+  },
+  telegram: {
+    enabled: process.env.TELEGRAM_ENABLE,
+    token: process.env.TELEGRAM_API,
+    allowed: process.env.TELEGRAM_ALLOW.split(','),
+    chatId: process.env.TELEGRAM_CHAT,
   }
 };
 

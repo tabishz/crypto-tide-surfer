@@ -62,6 +62,12 @@ module.exports = {
       EVAL_LIMIT: 6, // # of evaluation candles
       ORDER_WAIT: 3000,
       ORDER_INTERVALS: 6,
+      PORT: 9024,
+      APP_NAME: 'botapi',
+      TELEGRAM_ENABLE: 1, // 1 - true, 0 - false
+      TELEGRAM_API: 'telegram-bot-api-key',
+      TELEGRAM_CHAT: 123, // Telegram chat ID to announce to
+      TELEGRAM_ALLOW: 'user1,user2', // Users in allow list
     }
   }],
 };
@@ -95,6 +101,10 @@ module.exports = {
 | **ORDER_INTERVALS** | Numbers of times to check order status before cancelling it |
 | **PORT** | REST API Port |
 | **APP_NAME** | Name of REST API App |
+| **TELEGRAM_ENABLE** | Whether to enable Telegram or not (1: yes, 0: no) |
+| **TELEGRAM_API** | Telegram Bot API Key |
+| **TELEGRAM_CHAT** | Chat ID of Telegram chat, to announce to |
+| **TELEGRAM_ALLOW** | Comma separated list of users in the allow list |
 
 ## MongoDB
 Docker-compose.yaml
@@ -122,10 +132,14 @@ volumes:
 #### Useful MongoDB Queries
 
 ```js
-var total=0;
-db.getCollection('ledger').find({PnL: {$exists:true}}).forEach(doc => {
+var total=0, totalP=0;
+db.getCollection('ledger').find({crypto: 'CAKE', PnL: {$exists:true}}).forEach(doc => {
+    const d = new Date(doc.timestamp);
+    const dstamp = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`;
+    const amountPnL = doc.PnL.toFixed(2);
+    const percPnL = (doc.PnL / doc.cost) * 100;
     total = total + doc.PnL;
-    print(`${doc.crypto}/${doc.base}\t${new Date(doc.timestamp).toLocaleString()}\t${doc.PnL}`);
+    totalP = totalP + percPnL;
+    print(`${doc.crypto}/${doc.base}\t${dstamp}\t$${amountPnL}\t${percPnL.toFixed(2)}%\t$${total.toFixed(2)}\t${totalP.toFixed(2)}%`);
 });
-print(`Total: ${total.toFixed(3)}%`);
 ```

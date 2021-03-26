@@ -9,7 +9,7 @@ const axios = require('axios');
 
 const db = require('./db');
 const config = require('./config');
-const { exchanges } = require('ccxt');
+const { message } = require('./api/telegram');
 
 const exchange = new ccxt.binance({
   apiKey: process.env.API_KEY,
@@ -89,7 +89,9 @@ class Currency {
         return { status: false };
       }
     } else if (order.status == 'closed') {
-      this.log(`Sold ${quantity} ${this.crypto} for ${price} ${this.base}`, 'sell');
+      const pnl = (price/this.purchasePrice)*100;
+      this.log(`Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(3)} `+
+        `${this.base} (PnL: ${pnl.toFixed(2)}%)`, 'sell');
     }
     this.orderId = order.id;
     return order;
@@ -489,15 +491,6 @@ class Currency {
   }
 
   /**
-   * Simple log with timestamp
-   * @param {String} msg
-   */
-  log(msg, tag = null) {
-    if (tag) msg = `[${tag}] ${msg}`;
-    console.log(new Date().toLocaleString(), msg);
-  }
-
-  /**
    * Follows the price of the crypto pair and returns true if and when the change in price
    * is above minimum price as specified in Config
    * @returns true when conditions are met
@@ -508,11 +501,13 @@ class Currency {
       while (conditionMet !== true) {
         const chart = await this.getMarketData();
         const market = await this.evaluateChart(chart);
+        this.overallChange = (market.overallChange * 100).toFixed(4) + '%';
+        this.change = (market.change * 100).toFixed(4) + '%';
         this.log(
           `${this.crypto}=${this.currentPrice}  Change Sum: ` +
-            `${(market.change * 100).toFixed(4)}% (>= ${config.minChange * 100}%)|` +
+            `${this.change} (>= ${config.minChange * 100}%)|` +
             ` Overall Change over last ${config.evalTime}*${config.evalLimit}: ` +
-            `${(market.overallChange * 100).toFixed(4)}% (>= ${config.minOverallChange * 100}%)`
+            `${this.overallChange} (>= ${config.minOverallChange * 100}%)`
         );
         conditionMet = this.buyCondition(market);
         if (conditionMet) resolve(true);
@@ -567,7 +562,7 @@ class Currency {
         this.orderId = tracked.orderId;
         this.mode = tracked.mode;
       }
-      this.trackedBalance = tracked.balance;
+      this.trackedBalance = tracked?.balance;
     } catch (error) {
       this.log(`Unable to get data. ${JSON.stringify(error)}`, 'checkTracker');
       throw error;
@@ -595,8 +590,32 @@ class Currency {
     }
   }
 
+  sendTelegram(msg) {
+    message.send(config.telegram.chatId, msg);
+    return true;
+  }
+
   async delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Simple log with timestamp
+   * @param {String} msg
+   */
+   log(msg, tag = null) {
+    const d = new Date();
+    const dateString = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`+
+      `-${d.getDate().toString().padStart(2, '0')}T${d.getHours()}:${d.getMinutes()}:`+
+      `${d.getSeconds()}`;
+
+    if (tag) {
+      if (tag === 'buy' || tag === 'sell' || tag === 'initialize') {
+        if (config.telegram.enabled) this.sendTelegram(`<${tag}> ${msg}`);
+      }
+      msg = `[${tag}] ${msg}`;
+    }
+    console.log(dateString, msg);
   }
 }
 
