@@ -8,7 +8,7 @@ if (config.telegram.enabled) {
   const telegram = new TG({
     token: config.telegram.token,
   });
-  
+
   telegram.setMessageProvider(new TG.GetUpdateMessageProvider());
   telegram
     .start()
@@ -16,11 +16,32 @@ if (config.telegram.enabled) {
       console.log('Telegram BOT API is started.');
     })
     .catch(console.err);
-  
+
   telegram.getMe().then(console.log).catch(console.err);
-  
+
   const message = {
+    allowedParams: [
+      'crypto',
+      'base',
+      'minAmount',
+      'maxAmount',
+      'initStopLoss',
+      'runStopLoss',
+      'sellThreshold',
+      'buyThreshold',
+      'runningInterval',
+      'followInterval',
+      'coolOffPeriod',
+      'minChange',
+      'minOverallChange',
+      'satisfyBoth',
+      'evalTime',
+      'evalLimit',
+      'orderWait',
+      'orderIntervals',
+    ],
     reply: async function (received, crypto) {
+
       const user = received.from.username;
       const chatId = received.chat.id;
       const args = received.text.split(' ');
@@ -32,22 +53,34 @@ if (config.telegram.enabled) {
               additional = `| change: ${crypto.change}, overallChange: ${crypto.overallChange}`;
             }
             if (crypto.mode === 'sell') {
-              additional = `| purchase price: ${crypto.purchasePrice.toFixed(4)} | `+
+              additional =
+                `| purchase price: ${crypto.purchasePrice.toFixed(4)} | ` +
                 `StopLoss @ ${crypto.stopLossPrice.toFixed(4)} ${crypto.base}`;
             }
-            this.send(chatId, `Current Price of ${crypto.crypto} is ${crypto.currentPrice}`+
-              `${crypto.base} (mode: ${crypto.mode}) ${additional}`);
+            this.send(
+              chatId,
+              `Current Price of ${crypto.crypto} is ${crypto.currentPrice}` +
+                `${crypto.base} (mode: ${crypto.mode}) ${additional}`
+            );
             break;
           case 'update':
-            if (args[1] == 'crypto' && crypto.mode == 'sell') {
-              this.send(chatId, `Currency \*${crypto.crypto}* is locked right now `+
-                `(mode: ${crypto.mode}).`);
-            } else if (args[1] == 'base' && crypto.mode == 'sell') {
-              this.send(chatId, `Base \*${crypto.base}* is locked right now `+
-                `(mode: ${crypto.mode}).`);
+            if (this.allowedParams.includes(args[1])) {
+              if (args[1] == 'crypto' && crypto.mode == 'sell') {
+                this.send(
+                  chatId,
+                  `Currency \*${crypto.crypto}* is locked right now ` + `(mode: ${crypto.mode}).`
+                );
+              } else if (args[1] == 'base' && crypto.mode == 'sell') {
+                this.send(
+                  chatId,
+                  `Base \*${crypto.base}* is locked right now ` + `(mode: ${crypto.mode}).`
+                );
+              } else {
+                await crypto.updateEnv(args[1], args[2]);
+                this.send(chatId, `Updating \*${args[1]}*: ${args[2]} in the environment.`);
+              }
             } else {
-              await crypto.updateEnv(args[1], args[2]);
-              this.send(chatId, `Updating \*${args[1]}*: ${args[2]} in the environment.`);
+              this.send(chatId, `Variable \*${args[1]}* is not a valid environmental variable.`);
             }
             break;
           default:
@@ -76,7 +109,7 @@ if (config.telegram.enabled) {
       });
     },
   };
-  
+
   module.exports = {
     telegram,
     message,
@@ -84,12 +117,20 @@ if (config.telegram.enabled) {
 } else {
   // When telegram is disabled
   const message = {
-    send: function () { return false; },
-    reply: function () { return false; },
-  }
+    send: function () {
+      return false;
+    },
+    reply: function () {
+      return false;
+    },
+  };
   const telegram = {
-    getMe: function () { return false; },
-    on: function () { return false; },
-  }
-  module.exports = { telegram, message, }
+    getMe: function () {
+      return false;
+    },
+    on: function () {
+      return false;
+    },
+  };
+  module.exports = { telegram, message };
 }

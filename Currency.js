@@ -701,7 +701,7 @@ class Currency {
 
     if (tag) {
       if (tag === 'buy' || tag === 'sell' || tag === 'initialize') {
-        if (config.telegram.enabled) this.sendTelegram(`<${tag}> ${msg}`);
+        if (config.telegram.enabled) this.sendTelegram(`<\*${tag}*> ${msg}`);
       }
       msg = `[${tag}] ${msg}`;
     }
