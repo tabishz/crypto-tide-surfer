@@ -301,7 +301,7 @@ class Currency {
 
   async determineStopLoss() {
     if (this.maxPrice > this.purchasePrice) {
-      this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(this.runningStopLoss));
+      this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(this.runStopLoss));
     } else {
       this.stopLossPrice =
         parseFloat(this.purchasePrice) * (1 - parseFloat(this.initialStopLoss));
@@ -582,15 +582,15 @@ class Currency {
     try {
       const tracked = await db.checkTracker(this.pair);
       if (tracked?.mode == 'sell') {
-        this.maxPrice = tracked.maxPrice;
-        this.quantity = tracked.quantity;
-        this.remaining = tracked.remaining;
-        this.purchased = tracked.purchased;
-        this.purchasePrice = tracked.purchasePrice;
-        this.orderId = tracked.orderId;
-        this.mode = tracked.mode;
+        if (tracked.balance) this.maxPrice = tracked.maxPrice;
+        if (tracked.quantity) this.quantity = tracked.quantity;
+        if (tracked.remaining) this.remaining = tracked.remaining;
+        if (tracked.purchased) this.purchased = tracked.purchased;
+        if (tracked.purchasePrice) this.purchasePrice = tracked.purchasePrice;
+        if (tracked.orderId) this.orderId = tracked.orderId;
+        if (tracked.mode) this.mode = tracked.mode;
       }
-      this.trackedBalance = tracked?.balance;
+      if (tracked?.balance) this.trackedBalance = tracked.balance;
     } catch (error) {
       this.log(`Unable to get data. ${JSON.stringify(error)}`, 'checkTracker');
       throw error;
