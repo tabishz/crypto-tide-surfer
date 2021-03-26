@@ -20,6 +20,7 @@ const config = {
     ledger: 'ledger',
     orders: 'orders',
     track: 'track',
+    env: 'env',
   },
   exchange: {
     fees: 0.001,

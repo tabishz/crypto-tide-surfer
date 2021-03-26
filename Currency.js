@@ -26,6 +26,31 @@ class Currency {
   }
 
   async initialize() {
+    if (this.mode === undefined) {
+      const envData = await this.getEnv();
+      if (envData) {
+        for (let i=0; i < Object.keys(envData).length; i++) {
+          this[Object.keys(envData)[i]] = envData[Object.keys(envData)[i]];
+        }
+      } else {
+        this.minAmount = config.minAmount,
+        this.maxAmount = config.maxAmount,
+        this.initStopLoss = config.initialStopLoss,
+        this.runStopLoss = config.runningStopLoss,
+        this.sellThreshold = config.sellThreshold,
+        this.buyThreshold = config.buyThreshold,
+        this.runningInterval = config.runningInterval,
+        this.followInterval = config.followInterval,
+        this.coolOffPeriod = config.coolOffPeriod,
+        this.minChange = config.minChange,
+        this.minOverallChange = config.minOverallChange,
+        this.satisfyBoth = config.bothChangeSatisfy,
+        this.evalTime = config.evalTime,
+        this.evalLimit = config.evalLimit,
+        this.orderWait = config.order.wait,
+        this.orderIntervals = config.order.intervals;
+      }
+    }
     this.mode = 'start';
     this.filled = 0;
     this.maxPrice = 0;
@@ -89,7 +114,7 @@ class Currency {
         return { status: false };
       }
     } else if (order.status == 'closed') {
-      const pnl = (price/this.purchasePrice)*100;
+      const pnl = (1 - price/this.purchasePrice)*100;
       this.log(`Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(3)} `+
         `${this.base} (PnL: ${pnl.toFixed(2)}%)`, 'sell');
     }
@@ -125,8 +150,8 @@ class Currency {
     } else {
       const status = await this.checkOrderStatus(
         order.id,
-        config.order.wait,
-        config.order.intervals
+        this.orderWait,
+        this.orderIntervals
       );
       this.log(`orderStatus: ${JSON.stringify(status)}`, 'limitBuy');
       if (status.status === 'closed') {
@@ -187,8 +212,8 @@ class Currency {
     } else {
       const status = await this.checkOrderStatus(
         order.id,
-        config.order.wait,
-        config.order.intervals
+        this.orderWait,
+        this.orderIntervals
       );
       if (status.status === 'closed') {
         this.quantity = 0;
@@ -461,7 +486,7 @@ class Currency {
         `currentPrice: ${this.currentPrice} | stopLossPrice: ${this.stopLossPrice}`,
         'signalToSell'
       );
-      while (this.currentPrice >= this.stopLossPrice) {
+      while (this.currentPrice >= this.stopLossPrice || this.mode == 'sell') {
         await this.updatePrice();
         let diff = ((this.currentPrice - this.purchasePrice) / this.purchasePrice) * 100;
         this.log(
@@ -586,9 +611,61 @@ class Currency {
     this.mode = mode;
     try {
       await db.updateTracker(data);
+      return true;
     } catch (error) {
       this.log(`Unable to update data. ${JSON.stringify(error)}`, 'updateTracker');
       throw error;
+    }
+  }
+
+  /**
+   * Updates the Currency Object value
+   * @param {String} key Key for Currency Object
+   * @param {String|Number} value Value of the Key for Currency Object
+   * @returns true
+   */
+  updateEnv(key, value) {
+    this[key] = value;
+    return true;
+  }
+
+  async saveEnv() {
+    const data = {
+      crypto: config.crypto,
+      base: config.base,
+      minAmount: config.minAmount,
+      maxAmount: config.maxAmount,
+      initStopLoss: config.initialStopLoss,
+      runStopLoss: config.runningStopLoss,
+      sellThreshold: config.sellThreshold,
+      buyThreshold: config.buyThreshold,
+      runningInterval: config.runningInterval, // seconds
+      followInterval: config.followInterval, // seconds
+      coolOffPeriod: config.coolOffPeriod, // minutes
+      minChange: config.minChange,
+      minOverallChange: config.minOverallChange,
+      satisfyBoth: config.bothChangeSatisfy, // 0 for False, 1 for True
+      evalTime: config.evalTime, // 1m, 3m, 5m, 10m, 15m, 30m, 1h
+      evalLimit: config.evalLimit, // # of evaluation candles
+      orderWait: config.order.wait,
+      orderIntervals: config.order.intervals,
+    };
+    try {
+      await db.initEnv(data);
+      return true;
+    } catch (error) {
+      this.log(`Unable to update data. ${JSON.stringify(error)}`, 'saveEnv');
+      return false;
+    }
+  }
+
+  async getEnv() {
+    try {
+      const envData = await db.fetchEnv();
+      return envData;
+    } catch (error) {
+      this.log(`Unable to get data. ${JSON.stringify(error)}`, 'getEnv');
+      return false;
     }
   }
 

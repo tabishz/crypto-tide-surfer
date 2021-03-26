@@ -75,9 +75,35 @@ const trackSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+const envSchema = new mongoose.Schema({
+  crypto: String,
+  base: String,
+  minAmount: Number,
+  maxAmount: Number,
+  initStopLoss: Number,
+  runStopLoss: Number,
+  sellThreshold: Number,
+  buyThreshold: Number,
+  runningInterval: Number, // seconds
+  followInterval: Number, // seconds
+  coolOffPeriod: Number, // minutes
+  minChange: Number,
+  minOverallChange: Number,
+  satisfyBoth: Boolean, // 0 for False, 1 for True
+  evalTime: String, // 1m, 3m, 5m, 10m, 15m, 30m, 1h
+  evalLimit: Number, // # of evaluation candles
+  orderWait: Number,
+  orderIntervals: Number,
+},
+{
+  collection: config.db.env,
+  timestamps: true,
+});
+
 const Ledger = new mongoose.model('Ledger', ledgerSchema);
 const Order = new mongoose.model('Order', orderSchema);
 const Tracker = new mongoose.model('Tracker', trackSchema);
+const Environment = new mongoose.model('Environment', envSchema);
 
 const checkTracker = async (symbol) => {
   try {
@@ -177,6 +203,28 @@ const lastBalance = async () => {
   }
 };
 
+const initEnv = async (data) => {
+  try {
+    const newData = new Environment(data);
+    const inserted = await newData.save();
+    if (inserted) return true;
+    return false;
+  } catch (error) {
+    log(`Unable to update Env. ${JSON.stringify(error)}`);
+    throw error;
+  }
+}
+
+const fetchEnv = async () => {
+  try {
+    const env = await Environment.findOne({}).exec();
+    return env.toObject();
+  } catch (error) {
+    log(`Unable to get Env. ${JSON.stringify(error)}`);
+    throw error;
+  }
+};
+
 /**
  * Used only in Dev Environment to mock getBalances of Exchange
  * @returns Object of balances
@@ -203,4 +251,6 @@ module.exports = {
   createOrder,
   balance,
   lastBalance,
+  updateEnv,
+  fetchEnv,
 };

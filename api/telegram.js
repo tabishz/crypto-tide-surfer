@@ -23,10 +23,10 @@ if (config.telegram.enabled) {
     reply: function (received, crypto) {
       const user = received.from.username;
       const chatId = received.chat.id;
+      const args = received.text.toLowerCase().split(' ');
       if (this.authenticate(user)) {
-        switch (received.text) {
+        switch (args[0]) {
           case 'sup':
-          case 'Sup':
             let additional;
             if (crypto.mode === 'buy' || crypto.mode === 'start') {
               additional = `| change: ${crypto.change}, overallChange: ${crypto.overallChange}`;
