@@ -46,8 +46,8 @@ class Currency {
     );
     if (this.mode == 'sell') {
       this.log(
-        `Previous open order (${this.orderId}). Got ${this.remaining} ${this.crypto}` +
-          ` (Purchased at ${this.purchasePrice} ${this.base})`,
+        `Previous open order (${this.orderId}). Got ${this.remaining.toFixed(3)}` +
+        ` ${this.crypto} (Purchased at ${this.purchasePrice} ${this.base})`,
         'initialize'
       );
     }
@@ -390,6 +390,7 @@ class Currency {
   async purchaseCycle() {
     const baseAmount = await this.decideAmount();
     await this.getPrice();
+    this.mode = 'buy';
     this.log(`Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`, 'purchaseCycle');
     var order = { status: 'new' };
     var thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
@@ -582,6 +583,7 @@ class Currency {
       purchased: this.purchased,
       balance: this.trackedBalance,
     };
+    this.mode = mode;
     try {
       await db.updateTracker(data);
     } catch (error) {
