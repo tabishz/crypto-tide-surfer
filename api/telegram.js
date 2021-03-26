@@ -20,12 +20,12 @@ if (config.telegram.enabled) {
   telegram.getMe().then(console.log).catch(console.err);
   
   const message = {
-    reply: function (received, crypto) {
+    reply: async function (received, crypto) {
       const user = received.from.username;
       const chatId = received.chat.id;
-      const args = received.text.toLowerCase().split(' ');
+      const args = received.text.split(' ');
       if (this.authenticate(user)) {
-        switch (args[0]) {
+        switch (args[0].toLowerCase()) {
           case 'sup':
             let additional;
             if (crypto.mode === 'buy' || crypto.mode === 'start') {
@@ -38,16 +38,28 @@ if (config.telegram.enabled) {
             this.send(chatId, `Current Price of ${crypto.crypto} is ${crypto.currentPrice}`+
               `${crypto.base} (mode: ${crypto.mode}) ${additional}`);
             break;
+          case 'update':
+            if (args[1] == 'crypto' && crypto.mode == 'sell') {
+              this.send(chatId, `Currency \*${crypto.crypto}* is locked right now `+
+                `(mode: ${crypto.mode}).`);
+            } else if (args[1] == 'base' && crypto.mode == 'sell') {
+              this.send(chatId, `Base \*${crypto.base}* is locked right now `+
+                `(mode: ${crypto.mode}).`);
+            } else {
+              await crypto.updateEnv(args[1], args[2]);
+              this.send(chatId, `Updating \*${args[1]}*: ${args[2]} in the environment.`);
+            }
+            break;
           default:
             this.send(
               chatId,
-              `I got your message **${received.from.first_name}**, but I got nothing to say.`
+              `I got your message \*${received.from.first_name}*, but I got nothing to say.`
             );
         }
       } else {
         this.send(
           chatId,
-          `I got your message **${received.from.first_name}**, but I don't recognize you.`
+          `I got your message \*${received.from.first_name}*, but I don't recognize you.`
         );
       }
       return;

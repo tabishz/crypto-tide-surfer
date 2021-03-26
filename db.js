@@ -59,7 +59,6 @@ const orderSchema = new mongoose.Schema(
 );
 
 const trackSchema = new mongoose.Schema({
-  id: Number,
   orderId: String,
   mode: String,
   symbol: String,
@@ -107,11 +106,11 @@ const Environment = new mongoose.model('Environment', envSchema);
 
 const checkTracker = async (symbol) => {
   try {
-    const order = await Tracker.findOne({id: 1, symbol: symbol}).exec();
+    const order = await Tracker.findOne({symbol: symbol}).exec();
     if (order) {
       return order.toObject();
     } else {
-      const newTrack = new Tracker({id: 1, symbol: symbol, mode: 'new'});
+      const newTrack = new Tracker({symbol: symbol, mode: 'start'});
       await newTrack.save();
     }
     return order;
@@ -121,9 +120,9 @@ const checkTracker = async (symbol) => {
   }
 }
 
-const updateTracker = async (updates) => {
+const updateTracker = async (updates, symbol) => {
   try {
-    await Tracker.updateOne({id: 1}, updates);
+    await Tracker.updateOne({symbol: symbol}, updates);
     return true;
   } catch (error) {
     log(`Unable to update Tracker Order. ${JSON.stringify(error)}`);
@@ -225,6 +224,15 @@ const fetchEnv = async () => {
   }
 };
 
+const updateEnv = async(item, id) => {
+  try {
+    return await Environment.updateOne({_id: id}, item, { upsert: false });
+  } catch (error) {
+    log(`Unable to update Tracker Order. ${JSON.stringify(error)}`);
+    throw error;
+  }
+};
+
 /**
  * Used only in Dev Environment to mock getBalances of Exchange
  * @returns Object of balances
@@ -251,6 +259,7 @@ module.exports = {
   createOrder,
   balance,
   lastBalance,
-  updateEnv,
+  initEnv,
   fetchEnv,
+  updateEnv,
 };

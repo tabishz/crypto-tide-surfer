@@ -32,6 +32,7 @@ class Currency {
         for (let i=0; i < Object.keys(envData).length; i++) {
           this[Object.keys(envData)[i]] = envData[Object.keys(envData)[i]];
         }
+        this.pair = `${this.crypto}/${this.base}`;
       } else {
         this.minAmount = config.minAmount,
         this.maxAmount = config.maxAmount,
@@ -49,6 +50,7 @@ class Currency {
         this.evalLimit = config.evalLimit,
         this.orderWait = config.order.wait,
         this.orderIntervals = config.order.intervals;
+        await this.saveEnv();
       }
     }
     this.mode = 'start';
@@ -263,46 +265,46 @@ class Currency {
 
   async decideAmount() {
     if (
-      this.trackedBalance >= config.minAmount &&
-      this.trackedBalance <= config.maxAmount &&
+      this.trackedBalance >= this.minAmount &&
+      this.trackedBalance <= this.maxAmount &&
       this.trackedBalance <= this.balance.base
     ) {
       return this.trackedBalance;
     }
     if (
-      this.lastBalance >= config.minAmount &&
-      this.lastBalance <= config.maxAmount &&
+      this.lastBalance >= this.minAmount &&
+      this.lastBalance <= this.maxAmount &&
       this.lastBalance <= this.balance.base
     ) {
       return this.lastBalance;
     }
-    if (this.balance.base < config.minAmount) return 0;
-    if (this.balance.base >= config.minAmount && this.balance.base <= config.maxAmount) {
+    if (this.balance.base < this.minAmount) return 0;
+    if (this.balance.base >= this.minAmount && this.balance.base <= this.maxAmount) {
       return this.balance.base;
     }
-    if (this.balance.base > config.maxAmount) return config.maxAmount;
+    if (this.balance.base > this.maxAmount) return this.maxAmount;
   }
 
   async decideQuantityToBuy() {
     const amount = await this.decideAmount();
     if (!this.currentPrice) this.currentPrice = await this.getPrice();
-    const quantity = amount / (this.currentPrice * (1 + parseFloat(config.buyThreshold)));
+    const quantity = amount / (this.currentPrice * (1 + parseFloat(this.buyThreshold)));
     return quantity;
   }
 
   quantityEnough(quantity, price) {
     if (price === undefined) return true;
     const total = quantity * price;
-    if (total >= config.minAmount) return true;
+    if (total >= this.minAmount) return true;
     return false;
   }
 
   async determineStopLoss() {
     if (this.maxPrice > this.purchasePrice) {
-      this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(config.runningStopLoss));
+      this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(this.runningStopLoss));
     } else {
       this.stopLossPrice =
-        parseFloat(this.purchasePrice) * (1 - parseFloat(config.initialStopLoss));
+        parseFloat(this.purchasePrice) * (1 - parseFloat(this.initialStopLoss));
     }
     return this.stopLossPrice;
   }
@@ -370,7 +372,7 @@ class Currency {
   async getMarketData() {
     const url =
       `${config.priceApiUrl}/klines?symbol=${this.crypto}${this.base}` +
-      `&interval=${config.evalTime}&limit=${config.evalLimit}`;
+      `&interval=${this.evalTime}&limit=${this.evalLimit}`;
     const marketData = await axios.get(url);
     return marketData.data;
   }
@@ -418,16 +420,16 @@ class Currency {
     this.mode = 'buy';
     this.log(`Amount to buy ${this.crypto}: ${baseAmount} ${this.base}`, 'purchaseCycle');
     var order = { status: 'new' };
-    var thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
+    var thresholdPrice = this.currentPrice * (1 + parseFloat(this.buyThreshold));
     this.quantity = await this.decideQuantityToBuy();
     this.remaining = this.quantity;
     return new Promise(async (resolve) => {
       while (order.status !== 'closed' && this.quantityEnough(this.remaining, thresholdPrice)) {
         await this.followPrice();
         await this.getPrice();
-        thresholdPrice = this.currentPrice * (1 + parseFloat(config.buyThreshold));
+        thresholdPrice = this.currentPrice * (1 + parseFloat(this.buyThreshold));
         this.log(
-          `Threshold Price: ${thresholdPrice}, currentPrice: ${this.currentPrice} (${config.buyThreshold})`,
+          `Threshold Price: ${thresholdPrice}, currentPrice: ${this.currentPrice} (${this.buyThreshold})`,
           'purchaseCyle'
         );
         // if (this.filled) this.remaining = this.remaining - this.filled;
@@ -455,7 +457,7 @@ class Currency {
     this.log(`Ready to sell ${this.remaining} ${this.crypto} for ${this.base}`, 'sellCycle');
     var order = { status: 'staged' };
     await this.getPrice();
-    var thresholdPrice = this.currentPrice * (1 - parseFloat(config.sellThreshold));;
+    var thresholdPrice = this.currentPrice * (1 - parseFloat(this.sellThreshold));;
     return new Promise(async (resolve) => {
       while (order.status !== 'closed' && this.quantityEnough(this.remaining, thresholdPrice)) {
         // await this.updatePrice();
@@ -467,7 +469,7 @@ class Currency {
             'sellCycle'
           );
         }
-        thresholdPrice = this.currentPrice * (1 - parseFloat(config.sellThreshold));
+        thresholdPrice = this.currentPrice * (1 - parseFloat(this.sellThreshold));
         order = await this.sell(thresholdPrice, this.remaining);
         if (order.status == 'closed' || !this.quantityEnough(this.remaining, thresholdPrice)) {
           this.trackedBalance = order.cost;
@@ -499,7 +501,7 @@ class Currency {
           // create stopLoss order
           resolve(true);
         }
-        await this.delay(config.runningInterval);
+        await this.delay(this.runningInterval);
       }
     });
   }
@@ -531,27 +533,27 @@ class Currency {
         this.change = (market.change * 100).toFixed(4) + '%';
         this.log(
           `${this.crypto}=${this.currentPrice}  Change Sum: ` +
-            `${this.change} (>= ${config.minChange * 100}%)|` +
-            ` Overall Change over last ${config.evalTime}*${config.evalLimit}: ` +
-            `${this.overallChange} (>= ${config.minOverallChange * 100}%)`
+            `${this.change} (>= ${this.minChange * 100}%)|` +
+            ` Overall Change over last ${this.evalTime}*${this.evalLimit}: ` +
+            `${this.overallChange} (>= ${this.minOverallChange * 100}%)`
         );
         conditionMet = this.buyCondition(market);
         if (conditionMet) resolve(true);
-        await this.delay(config.followInterval);
+        await this.delay(this.followInterval);
       }
     });
   }
 
   buyCondition(rate) {
-    if (config.bothChangeSatisfy) {
+    if (this.satisfyBoth) {
       // Both changes must be greater than their minimum required values
-      if (rate.change > config.minChange && rate.overallChange > config.minOverallChange) {
+      if (rate.change > this.minChange && rate.overallChange > this.minOverallChange) {
         this.log('Conditions to Purchase are met!');
         return true;
       }
     }
     // Either of the changes must be greater than their minimum required values
-    if (rate.change > config.minChange || rate.overallChange > config.minOverallChange) {
+    if (rate.change > this.minChange || rate.overallChange > this.minOverallChange) {
       this.log('One of the Condition to Purchase is met!');
       return true;
     }
@@ -610,7 +612,7 @@ class Currency {
     };
     this.mode = mode;
     try {
-      await db.updateTracker(data);
+      await db.updateTracker(data, this.pair);
       return true;
     } catch (error) {
       this.log(`Unable to update data. ${JSON.stringify(error)}`, 'updateTracker');
@@ -624,15 +626,20 @@ class Currency {
    * @param {String|Number} value Value of the Key for Currency Object
    * @returns true
    */
-  updateEnv(key, value) {
+  async updateEnv(key, value) {
     this[key] = value;
+    if (key == 'crypto' || key == 'base') {
+      this.pair = `${this.crypto}/${this.base}`;
+    }
+    this.log(`Updating this.${key} to ${value}`, 'updateEnv');
+    await db.updateEnv({[key]: value}, this._id);
     return true;
   }
 
   async saveEnv() {
     const data = {
-      crypto: config.crypto,
-      base: config.base,
+      crypto: this.crypto,
+      base: this.base,
       minAmount: config.minAmount,
       maxAmount: config.maxAmount,
       initStopLoss: config.initialStopLoss,
@@ -651,7 +658,11 @@ class Currency {
       orderIntervals: config.order.intervals,
     };
     try {
-      await db.initEnv(data);
+      const saved = await db.initEnv(data);
+      if (saved) {
+        const envData = await this.getEnv();
+        this._id = envData._id;
+      }
       return true;
     } catch (error) {
       this.log(`Unable to update data. ${JSON.stringify(error)}`, 'saveEnv');
