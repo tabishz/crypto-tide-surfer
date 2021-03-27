@@ -132,10 +132,15 @@ class Currency {
    * @returns Object of order details
    */
   async limitBuy(price, quantity) {
-    const order = await exchange.createLimitBuyOrder(this.pair, quantity, price);
+    let order;
+    try {
+      order = await exchange.createLimitBuyOrder(this.pair, quantity, price);
+    } catch (e) {
+      this.log(`Unable to purchase: ${JSON.stringify(e)}`, 'limitBuy');
+    }
     this.log(`OrderId: ${order.id} (${order.status}) for ${this.pair} placed.`, 'limitBuy');
     await db.createOrder(order);
-    if (order.status === 'closed') {
+    if (order?.status === 'closed') {
       this.remaining = order.amount;
       this.balance.base = this.balance.base - order.cost;
       this.purchased = parseFloat(order.amount) * (1 - parseFloat(config.exchange.fees));
@@ -439,6 +444,9 @@ class Currency {
             `${this.crypto} Purchased: ${this.filled}, Remaining: ` + `${this.remaining}`,
             'purchaseCycle'
           );
+        } else {
+          this.quantity = await this.decideQuantityToBuy();
+          this.remaining = this.quantity;
         }
         order = await this.buy(thresholdPrice, this.remaining);
         if (order.status == 'closed' || !this.quantityEnough(this.remaining, thresholdPrice)) {
