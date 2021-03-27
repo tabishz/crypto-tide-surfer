@@ -318,7 +318,8 @@ class Currency {
   checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
     let order = { status: 'checking' };
-    this.log(`Checking order status (id: ${orderId}).`, 'checkOrderStatus');
+    this.log(`Checking order status (id: ${orderId}). ${wait}*${intervals}ms`,
+      'checkOrderStatus');
     return new Promise(async (resolve) => {
       while (i <= intervals && order.status !== 'closed') {
         order = await this.orderStatus(orderId);
@@ -335,7 +336,7 @@ class Currency {
         if (i >= intervals || order.status === 'closed') resolve(order);
         i++;
       }
-      await this.delay(wait);
+      await this.delay(parseInt(wait));
     });
   }
 
@@ -502,7 +503,7 @@ class Currency {
         let diff = ((this.currentPrice - this.purchasePrice) / this.purchasePrice) * 100;
         this.log(
           `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at ` +
-            `${this.purchasePrice} ${this.base}) [${diff.toFixed(3)}%] ` +
+            `${this.purchasePrice.toFixed(5)} ${this.base}) [${diff.toFixed(3)}%] ` +
             `StopLoss @ ${this.stopLossPrice.toFixed(5)} ${this.base}`,
           'signalToSell'
         );
@@ -741,8 +742,8 @@ class Currency {
    log(msg, tag = null) {
     const d = new Date();
     const dateString = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`+
-      `-${d.getDate().toString().padStart(2, '0')}T${d.getHours()}:${d.getMinutes()}:`+
-      `${d.getSeconds()}`;
+      `-${d.getDate().toString().padStart(2, '0')}T${d.getHours().padStart(2, '0')}`+
+      `:${d.getMinutes().padStart(2, '0')}:${d.getSeconds().padStart(2, '0')}`;
 
     if (tag) {
       if (tag === 'buy' || tag === 'sell' || tag === 'initialize') {
