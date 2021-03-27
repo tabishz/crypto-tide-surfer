@@ -545,6 +545,42 @@ class Currency {
     });
   }
 
+  greenHammer(data) {
+    const open = parseFloat(data[1]);
+    const highest = parseFloat(data[2]);
+    const lowest = parseFloat(data[3]);
+    const close = parseFloat(data[4]);
+    const barTop = (close > open) ? close : open;
+    const barBottom = (close > open) ? open : close;
+    const upperDelta = highest - barTop;
+    const lowerDelta = barBottom - lowest;
+    const condition1 = (upperDelta > 2*lowerDelta);
+    const condition2 = (barTop == close);
+    const condition3 = (Math.abs(close-open) > 0);
+    if (condition1 && condition2 && condition3) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  threeSoldiers(data) {
+    // last 3 candles excluding the most recent (which is incomplete)
+    const candles = data.slice(data.length-5, data.length-2);
+    const candle1change = (parseFloat(candles[0][4]) - parseFloat(candles[0][1]) > 0);
+    const candle2change = (parseFloat(candles[1][4]) - parseFloat(candles[2][1]) > 0);
+    const candle3change = (parseFloat(candles[2][4]) - parseFloat(candles[3][1]) > 0);
+    const candle1avg = (parseFloat(candles[0][4]) + parseFloat(candles[0][1]))/2;
+    const candle2avg = (parseFloat(candles[1][4]) + parseFloat(candles[1][1]))/2;
+    const candle2open = (parseFloat(candles[1][1]) > candle1avg);
+    const candle3open = (parseFloat(candles[2][1]) > candle2avg);
+    if (candle1change && candle2change && candle3change && candle2open && candle3open) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   buyCondition(rate) {
     if (this.satisfyBoth) {
       // Both changes must be greater than their minimum required values
