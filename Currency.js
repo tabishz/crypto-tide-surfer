@@ -116,8 +116,8 @@ class Currency {
         return { status: false };
       }
     } else if (order.status == 'closed') {
-      const pnl = (1 - price/this.purchasePrice)*100;
-      this.log(`Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(3)} `+
+      const pnl = (price/this.purchasePrice - 1) * 100;
+      this.log(`Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(5)} `+
         `${this.base} (PnL: ${pnl.toFixed(2)}%)`, 'sell');
     }
     this.orderId = order.id;
@@ -264,6 +264,7 @@ class Currency {
   }
 
   async decideAmount() {
+    await this.getBalances();
     if (
       this.trackedBalance >= this.minAmount &&
       this.trackedBalance <= this.maxAmount &&
@@ -304,7 +305,7 @@ class Currency {
       this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(this.runStopLoss));
     } else {
       this.stopLossPrice =
-        parseFloat(this.purchasePrice) * (1 - parseFloat(this.initialStopLoss));
+        parseFloat(this.purchasePrice) * (1 - parseFloat(this.initStopLoss));
     }
     return this.stopLossPrice;
   }
@@ -386,28 +387,28 @@ class Currency {
    * @returns
    */
   async updatePrice() {
-    const newPrice = await this.getPrice();
+    this.currentPrice = await this.getPrice();
     if (this.maxPrice) {
-      if (newPrice > this.maxPrice) {
+      if (this.currentPrice > this.maxPrice) {
         await this.updateTracker('sell');
-        this.maxPrice = newPrice;
+        this.maxPrice = this.currentPrice;
         await this.determineStopLoss();
         this.log(
           `Updated Max Price for ${this.pair}: ${this.maxPrice.toString()}` +
-            ` Determined stopLoss: ${this.stopLossPrice}`,
+            ` Determined stopLoss: ${this.stopLossPrice.toFixed(5)}`,
           'updatePrice'
         );
       }
     } else {
-      this.maxPrice = newPrice;
+      this.maxPrice = this.currentPrice;
       await this.determineStopLoss();
       this.log(
-        `Added Max Price for ${this.pair}: ${newPrice.toString()}` +
-          ` Determined stopLoss: ${this.stopLossPrice}`,
+        `Added Max Price for ${this.pair}: ${this.currentPrice.toString()}` +
+          ` Determined stopLoss: ${this.stopLossPrice.toFixed(5)}`,
         'updatePrice'
       );
     }
-    return newPrice;
+    return this.currentPrice;
   }
 
   /**
@@ -493,8 +494,8 @@ class Currency {
         let diff = ((this.currentPrice - this.purchasePrice) / this.purchasePrice) * 100;
         this.log(
           `${this.crypto}=${this.currentPrice} ${this.base} (Purchased at ` +
-            `${this.purchasePrice} ${this.base}) [${diff.toFixed(4)}%] ` +
-            `StopLoss @ ${this.stopLossPrice.toFixed(4)} ${this.base}`,
+            `${this.purchasePrice} ${this.base}) [${diff.toFixed(3)}%] ` +
+            `StopLoss @ ${this.stopLossPrice.toFixed(5)} ${this.base}`,
           'signalToSell'
         );
         if (this.currentPrice <= this.stopLossPrice) {
