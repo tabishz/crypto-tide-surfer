@@ -29,27 +29,27 @@ class Currency {
     if (this.mode === undefined) {
       const envData = await this.getEnv();
       if (envData) {
-        for (let i=0; i < Object.keys(envData).length; i++) {
+        for (let i = 0; i < Object.keys(envData).length; i++) {
           this[Object.keys(envData)[i]] = envData[Object.keys(envData)[i]];
         }
         this.pair = `${this.crypto}/${this.base}`;
       } else {
-        this.minAmount = config.minAmount,
-        this.maxAmount = config.maxAmount,
-        this.initStopLoss = config.initialStopLoss,
-        this.runStopLoss = config.runningStopLoss,
-        this.sellThreshold = config.sellThreshold,
-        this.buyThreshold = config.buyThreshold,
-        this.runningInterval = config.runningInterval,
-        this.followInterval = config.followInterval,
-        this.coolOffPeriod = config.coolOffPeriod,
-        this.minChange = config.minChange,
-        this.minOverallChange = config.minOverallChange,
-        this.satisfyBoth = config.bothChangeSatisfy,
-        this.evalTime = config.evalTime,
-        this.evalLimit = config.evalLimit,
-        this.orderWait = config.order.wait,
-        this.orderIntervals = config.order.intervals;
+        (this.minAmount = config.minAmount),
+        (this.maxAmount = config.maxAmount),
+        (this.initStopLoss = config.initialStopLoss),
+        (this.runStopLoss = config.runningStopLoss),
+        (this.sellThreshold = config.sellThreshold),
+        (this.buyThreshold = config.buyThreshold),
+        (this.runningInterval = config.runningInterval),
+        (this.followInterval = config.followInterval),
+        (this.coolOffPeriod = config.coolOffPeriod),
+        (this.minChange = config.minChange),
+        (this.minOverallChange = config.minOverallChange),
+        (this.satisfyBoth = config.bothChangeSatisfy),
+        (this.evalTime = config.evalTime),
+        (this.evalLimit = config.evalLimit),
+        (this.orderWait = config.order.wait),
+        (this.orderIntervals = config.order.intervals);
         await this.saveEnv();
       }
     }
@@ -67,14 +67,14 @@ class Currency {
     await this.getLastBalance();
     await this.checkTracker();
     this.log(
-      `Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base} `+ 
-      `[TrackedBalance: ${this.trackedBalance}]`,
+      `Balances ${this.pair}: ${this.balance.crypto}/${this.balance.base} ` +
+        `[TrackedBalance: ${this.trackedBalance}]`,
       'initialize'
     );
     if (this.mode == 'sell') {
       this.log(
         `Previous open order (${this.orderId}). Got ${this.remaining.toFixed(3)}` +
-        ` ${this.crypto} (Purchased at ${this.purchasePrice} ${this.base})`,
+          ` ${this.crypto} (Purchased at ${this.purchasePrice} ${this.base})`,
         'initialize'
       );
     }
@@ -116,9 +116,12 @@ class Currency {
         return { status: false };
       }
     } else if (order.status == 'closed') {
-      const pnl = (price/this.purchasePrice - 1) * 100;
-      this.log(`Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(5)} `+
-        `${this.base} (PnL: ${pnl.toFixed(2)}%)`, 'sell');
+      const pnl = (price / this.purchasePrice - 1) * 100;
+      this.log(
+        `Sold ${quantity.toFixed(3)} ${this.crypto} for ${price.toFixed(5)} ` +
+          `${this.base} (PnL: ${pnl.toFixed(2)}%)`,
+        'sell'
+      );
     }
     this.orderId = order.id;
     return order;
@@ -155,11 +158,7 @@ class Currency {
       });
       return order;
     } else {
-      const status = await this.checkOrderStatus(
-        order.id,
-        this.orderWait,
-        this.orderIntervals
-      );
+      const status = await this.checkOrderStatus(order.id, this.orderWait, this.orderIntervals);
       this.log(`orderStatus: ${JSON.stringify(status)}`, 'limitBuy');
       if (status.status === 'closed') {
         this.remaining = order.amount;
@@ -217,11 +216,7 @@ class Currency {
       });
       return order;
     } else {
-      const status = await this.checkOrderStatus(
-        order.id,
-        this.orderWait,
-        this.orderIntervals
-      );
+      const status = await this.checkOrderStatus(order.id, this.orderWait, this.orderIntervals);
       if (status.status === 'closed') {
         this.quantity = 0;
         this.balance.base = this.balance.base + status.cost;
@@ -309,8 +304,7 @@ class Currency {
     if (this.maxPrice > this.purchasePrice) {
       this.stopLossPrice = parseFloat(this.maxPrice) * (1 - parseFloat(this.runStopLoss));
     } else {
-      this.stopLossPrice =
-        parseFloat(this.purchasePrice) * (1 - parseFloat(this.initStopLoss));
+      this.stopLossPrice = parseFloat(this.purchasePrice) * (1 - parseFloat(this.initStopLoss));
     }
     return this.stopLossPrice;
   }
@@ -318,8 +312,10 @@ class Currency {
   checkOrderStatus(orderId, wait, intervals) {
     let i = 1;
     let order = { status: 'checking' };
-    this.log(`Checking order status (id: ${orderId}). ${wait}*${intervals}ms`,
-      'checkOrderStatus');
+    this.log(
+      `Checking order status (id: ${orderId}). ${wait}*${intervals}ms`,
+      'checkOrderStatus'
+    );
     return new Promise(async (resolve) => {
       while (i <= intervals && order.status !== 'closed') {
         order = await this.orderStatus(orderId);
@@ -467,7 +463,7 @@ class Currency {
     this.log(`Ready to sell ${this.remaining} ${this.crypto} for ${this.base}`, 'sellCycle');
     var order = { status: 'staged' };
     await this.getPrice();
-    var thresholdPrice = this.currentPrice * (1 - parseFloat(this.sellThreshold));;
+    var thresholdPrice = this.currentPrice * (1 - parseFloat(this.sellThreshold));
     return new Promise(async (resolve) => {
       while (order.status !== 'closed' && this.quantityEnough(this.remaining, thresholdPrice)) {
         // await this.updatePrice();
@@ -547,7 +543,8 @@ class Currency {
             ` Overall Change over last ${this.evalTime}*${this.evalLimit}: ` +
             `${this.overallChange} (>= ${this.minOverallChange * 100}%)`
         );
-        conditionMet = this.buyCondition(market);
+        // conditionMet = this.buyCondition(market);
+        conditionMet = this.shouldBuy(market);
         if (conditionMet) resolve(true);
         await this.delay(this.followInterval);
       }
@@ -556,17 +553,17 @@ class Currency {
 
   greenHammer(data) {
     const open = parseFloat(data[1]);
-    const highest = parseFloat(data[2]);
+    // const highest = parseFloat(data[2]);
     const lowest = parseFloat(data[3]);
     const close = parseFloat(data[4]);
-    const barTop = (close > open) ? close : open;
-    const barBottom = (close > open) ? open : close;
-    const upperDelta = highest - barTop;
+    // const barTop = close > open ? close : open;
+    const barBottom = close > open ? open : close;
+    // const upperDelta = highest - barTop;
     const lowerDelta = barBottom - lowest;
-    const condition1 = (upperDelta > 2*lowerDelta);
-    const condition2 = (barTop == close);
-    const condition3 = (Math.abs(close-open) > 0);
-    if (condition1 && condition2 && condition3) {
+    const barHeight = Math.abs(close-open);
+    const condition1 = lowerDelta > 1.5 * barHeight;
+    const condition2 = close - open > 0; // Green
+    if (condition1 && condition2) {
       return true;
     } else {
       return false;
@@ -575,19 +572,36 @@ class Currency {
 
   threeSoldiers(data) {
     // last 3 candles excluding the most recent (which is incomplete)
-    const candles = data.slice(data.length-5, data.length-2);
-    const candle1change = (parseFloat(candles[0][4]) - parseFloat(candles[0][1]) > 0);
-    const candle2change = (parseFloat(candles[1][4]) - parseFloat(candles[2][1]) > 0);
-    const candle3change = (parseFloat(candles[2][4]) - parseFloat(candles[3][1]) > 0);
-    const candle1avg = (parseFloat(candles[0][4]) + parseFloat(candles[0][1]))/2;
-    const candle2avg = (parseFloat(candles[1][4]) + parseFloat(candles[1][1]))/2;
-    const candle2open = (parseFloat(candles[1][1]) > candle1avg);
-    const candle3open = (parseFloat(candles[2][1]) > candle2avg);
+    if (data.length < 4) return false;
+    const candles = data.slice(data.length - 5, data.length - 2);
+    const candle1change = parseFloat(candles[0][4]) - parseFloat(candles[0][1]) > 0;
+    const candle2change = parseFloat(candles[1][4]) - parseFloat(candles[2][1]) > 0;
+    const candle3change = parseFloat(candles[2][4]) - parseFloat(candles[3][1]) > 0;
+    const candle1avg = (parseFloat(candles[0][4]) + parseFloat(candles[0][1])) / 2;
+    const candle2avg = (parseFloat(candles[1][4]) + parseFloat(candles[1][1])) / 2;
+    const candle2open = parseFloat(candles[1][1]) > candle1avg;
+    const candle3open = parseFloat(candles[2][1]) > candle2avg;
     if (candle1change && candle2change && candle3change && candle2open && candle3open) {
       return true;
     } else {
       return false;
     }
+  }
+
+  shouldBuy(data) {
+    const green_hammer = this.greenHammer(data[data.length-2]);
+    const three_soldiers = this.threeSoldiers(data);
+    if (this.satisfyBoth) {
+      if (green_hammer && three_soldiers) {
+        this.log('Green Hammer and Three Soldiers seen!');
+        return true;
+      }
+    }
+    if (green_hammer || three_soldiers) {
+      this.log('One of the Condition to Purchase is met!');
+      return true;
+    }
+    return false;
   }
 
   buyCondition(rate) {
@@ -604,6 +618,27 @@ class Currency {
       return true;
     }
     return false;
+  }
+
+  redHammer(data) {
+    const open = parseFloat(data[1]);
+    const highest = parseFloat(data[2]);
+    const lowest = parseFloat(data[3]);
+    const close = parseFloat(data[4]);
+    const barTop = close > open ? close : open;
+    const barBottom = close > open ? open : close;
+    const upperDelta = highest - barTop;
+    const lowerDelta = barBottom - lowest;
+    const barHeight = Math.abs(close-open);
+    const condition1 = lowerDelta > 1.5 * barHeight;
+    const condition2 = upperDelta > 1.5 * barHeight;
+    const condition1n2 = condition1 || condition2;
+    const condition3 = close - open < 0; // Red
+    if (condition1n2 && condition3) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -678,7 +713,7 @@ class Currency {
       this.pair = `${this.crypto}/${this.base}`;
     }
     this.log(`Updating this.${key} to ${value}`, 'updateEnv');
-    await db.updateEnv({[key]: value}, this._id);
+    await db.updateEnv({ [key]: value }, this._id);
     return true;
   }
 
@@ -739,11 +774,18 @@ class Currency {
    * Simple log with timestamp
    * @param {String} msg
    */
-   log(msg, tag = null) {
+  log(msg, tag = null) {
     const d = new Date();
-    const dateString = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`+
-      `-${d.getDate().toString().padStart(2, '0')}T${d.getHours().padStart(2, '0')}`+
-      `:${d.getMinutes().padStart(2, '0')}:${d.getSeconds().padStart(2, '0')}`;
+    const dateString =
+      `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}` +
+      `-${d.getDate().toString().padStart(2, '0')}T${d
+        .getHours()
+        .toString()
+        .padStart(2, '0')}` +
+      `:${d.getMinutes().toString().padStart(2, '0')}:${d
+        .getSeconds()
+        .toString()
+        .padStart(2, '0')}`;
 
     if (tag) {
       if (tag === 'buy' || tag === 'sell' || tag === 'initialize') {
