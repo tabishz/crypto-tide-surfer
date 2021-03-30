@@ -12,7 +12,7 @@ mongoose
     log('Connected to MongoDB');
   })
   .catch((error) => {
-    log('Unable to connect to MongoDB '+ JSON.stringify(error));
+    log('Unable to connect to MongoDB ' + JSON.stringify(error));
   });
 
 const ledgerSchema = new mongoose.Schema(
@@ -58,46 +58,50 @@ const orderSchema = new mongoose.Schema(
   { collection: config.db.order }
 );
 
-const trackSchema = new mongoose.Schema({
-  orderId: String,
-  mode: String,
-  symbol: String,
-  purchasePrice: Number,
-  maxPrice: Number,
-  quantity: Number,
-  remaining: Number,
-  purchased: Number,
-  balance: Number,
-},
-{
-  collection: config.db.track,
-  timestamps: true,
-});
+const trackSchema = new mongoose.Schema(
+  {
+    orderId: String,
+    mode: String,
+    symbol: String,
+    purchasePrice: Number,
+    maxPrice: Number,
+    quantity: Number,
+    remaining: Number,
+    purchased: Number,
+    balance: Number,
+  },
+  {
+    collection: config.db.track,
+    timestamps: true,
+  }
+);
 
-const envSchema = new mongoose.Schema({
-  crypto: String,
-  base: String,
-  minAmount: Number,
-  maxAmount: Number,
-  initStopLoss: Number,
-  runStopLoss: Number,
-  sellThreshold: Number,
-  buyThreshold: Number,
-  runningInterval: Number, // seconds
-  followInterval: Number, // seconds
-  coolOffPeriod: Number, // minutes
-  minChange: Number,
-  minOverallChange: Number,
-  satisfyBoth: Boolean, // 0 for False, 1 for True
-  evalTime: String, // 1m, 3m, 5m, 10m, 15m, 30m, 1h
-  evalLimit: Number, // # of evaluation candles
-  orderWait: Number,
-  orderIntervals: Number,
-},
-{
-  collection: config.db.env,
-  timestamps: true,
-});
+const envSchema = new mongoose.Schema(
+  {
+    crypto: String,
+    base: String,
+    minAmount: Number,
+    maxAmount: Number,
+    initStopLoss: Number,
+    runStopLoss: Number,
+    sellThreshold: Number,
+    buyThreshold: Number,
+    runningInterval: Number, // seconds
+    followInterval: Number, // seconds
+    coolOffPeriod: Number, // minutes
+    minChange: Number,
+    minOverallChange: Number,
+    satisfyBoth: Boolean, // 0 for False, 1 for True
+    evalTime: String, // 1m, 3m, 5m, 10m, 15m, 30m, 1h
+    evalLimit: Number, // # of evaluation candles
+    orderWait: Number,
+    orderIntervals: Number,
+  },
+  {
+    collection: config.db.env,
+    timestamps: true,
+  }
+);
 
 const Ledger = new mongoose.model('Ledger', ledgerSchema);
 const Order = new mongoose.model('Order', orderSchema);
@@ -106,11 +110,11 @@ const Environment = new mongoose.model('Environment', envSchema);
 
 const checkTracker = async (symbol) => {
   try {
-    const order = await Tracker.findOne({symbol: symbol}).exec();
+    const order = await Tracker.findOne({ symbol: symbol }).exec();
     if (order) {
       return order.toObject();
     } else {
-      const newTrack = new Tracker({symbol: symbol, mode: 'start'});
+      const newTrack = new Tracker({ symbol: symbol, mode: 'start' });
       await newTrack.save();
     }
     return order;
@@ -118,17 +122,17 @@ const checkTracker = async (symbol) => {
     log(`Unable to get Tracker Order. ${JSON.stringify(error)}`);
     throw error;
   }
-}
+};
 
 const updateTracker = async (updates, symbol) => {
   try {
-    await Tracker.updateOne({symbol: symbol}, updates);
+    await Tracker.updateOne({ symbol: symbol }, updates);
     return true;
   } catch (error) {
     log(`Unable to update Tracker Order. ${JSON.stringify(error)}`);
     throw error;
   }
-}
+};
 
 /**
  * updates an order in mongoDB by replacing old one
@@ -176,8 +180,9 @@ const updateLedger = async (details) => {
   if (details.transaction == 'sell') {
     data.priceSold = details.price;
     data.PnL =
-      (data.priceSold * data.quantity - data.fees) -
-      (data.priceBought * data.quantity * (1 + config.exchange.fees));
+      data.priceSold * data.quantity -
+      data.fees -
+      data.priceBought * data.quantity * (1 + config.exchange.fees);
   }
 
   try {
@@ -192,6 +197,7 @@ const updateLedger = async (details) => {
 };
 
 const lastBalance = async () => {
+  // eslint-disable-next-line no-useless-catch
   try {
     const balance = await Ledger.findOne({ transaction: 'sell' })
       .sort({ timestamp: -1 })
@@ -212,7 +218,7 @@ const initEnv = async (data) => {
     log(`Unable to update Env. ${JSON.stringify(error)}`);
     throw error;
   }
-}
+};
 
 const fetchEnv = async () => {
   try {
@@ -224,9 +230,9 @@ const fetchEnv = async () => {
   }
 };
 
-const updateEnv = async(item, id) => {
+const updateEnv = async (item, id) => {
   try {
-    return await Environment.updateOne({_id: id}, item, { upsert: false });
+    return await Environment.updateOne({ _id: id }, item, { upsert: false });
   } catch (error) {
     log(`Unable to update Tracker Order. ${JSON.stringify(error)}`);
     throw error;

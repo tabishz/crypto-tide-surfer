@@ -13,7 +13,8 @@ app.use(express.json());
 const cc = new Currency(config.crypto, config.base);
 
 async function main () {
-  while (1 < 2) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     await cc.initialize();
     if (cc.mode != 'sell') await cc.purchaseCycle();
     await cc.sellCycle();
@@ -21,11 +22,11 @@ async function main () {
       'main');
     await cc.delay(config.coolOffPeriod);
   }
-};
+}
 
 if (config.telegram.enabled) {
   telegram.on('update', (update) => {
-    cc.log(`Msg Received: ${JSON.stringify(update)}`, 'Telegram');
+    cc.log(`${config.telegram.enabled} Msg Received: ${JSON.stringify(update)}`, 'Telegram');
     message.reply(update.message, cc);
   });
 }
@@ -38,8 +39,8 @@ http.createServer({
   // key: fs.readFileSync('../certs/key.pem'),
   // cert: fs.readFileSync('../certs/cert.pem')
 }, app)
-.listen(process.env.PORT);
-console.log(`${process.env.APP_NAME} REST API listening on port: ${process.env.PORT}`);
+  .listen(process.env.PORT);
+cc.log(`${process.env.APP_NAME} REST API listening on port: ${process.env.PORT}`);
 
 // running the main logic
 cc.log(`Running ENV:${process.env.NODE_ENV}`);

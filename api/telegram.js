@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 const config = require('../config');
 const TG = require('telegram-bot-api');
 
@@ -47,47 +48,48 @@ if (config.telegram.enabled) {
       const args = received.text.split(' ');
       if (this.authenticate(user)) {
         switch (args[0].toLowerCase()) {
-          case 'sup':
-            let additional;
-            if (crypto.mode === 'buy' || crypto.mode === 'start') {
-              additional = `| change: ${crypto.change}, overallChange: ${crypto.overallChange}`;
-            }
-            if (crypto.mode === 'sell') {
-              additional =
-                `| purchase price: ${crypto.purchasePrice.toFixed(4)} | ` +
-                `StopLoss @ ${crypto.stopLossPrice.toFixed(4)} ${crypto.base}`;
-            }
-            this.send(
-              chatId,
-              `Current Price of ${crypto.crypto} is ${crypto.currentPrice}` +
-                `${crypto.base} (mode: ${crypto.mode}) ${additional}`
-            );
-            break;
-          case 'update':
-            if (this.allowedParams.includes(args[1])) {
-              if (args[1] == 'crypto' && crypto.mode == 'sell') {
-                this.send(
-                  chatId,
-                  `Currency \*${crypto.crypto}* is locked right now ` + `(mode: ${crypto.mode}).`
-                );
-              } else if (args[1] == 'base' && crypto.mode == 'sell') {
-                this.send(
-                  chatId,
-                  `Base \*${crypto.base}* is locked right now ` + `(mode: ${crypto.mode}).`
-                );
-              } else {
-                await crypto.updateEnv(args[1], args[2]);
-                this.send(chatId, `Updating \*${args[1]}*: ${args[2]} in the environment.`);
-              }
+        case 'sup': {
+          let additional;
+          if (crypto.mode === 'buy' || crypto.mode === 'start') {
+            additional = `| change: ${crypto.change}, overallChange: ${crypto.overallChange}`;
+          }
+          if (crypto.mode === 'sell') {
+            additional =
+              `| purchase price: ${crypto.purchasePrice.toFixed(4)} | ` +
+              `StopLoss @ ${crypto.stopLossPrice.toFixed(4)} ${crypto.base}`;
+          }
+          this.send(
+            chatId,
+            `Current Price of ${crypto.crypto} is ${crypto.currentPrice}` +
+              `${crypto.base} (mode: ${crypto.mode}) ${additional}`
+          );
+          break;
+        }
+        case 'update':
+          if (this.allowedParams.includes(args[1])) {
+            if (args[1] == 'crypto' && crypto.mode == 'sell') {
+              this.send(
+                chatId,
+                `Currency \*${crypto.crypto}* is locked right now ` + `(mode: ${crypto.mode}).`
+              );
+            } else if (args[1] == 'base' && crypto.mode == 'sell') {
+              this.send(
+                chatId,
+                `Base \*${crypto.base}* is locked right now ` + `(mode: ${crypto.mode}).`
+              );
             } else {
-              this.send(chatId, `Variable \*${args[1]}* is not a valid environmental variable.`);
+              await crypto.updateEnv(args[1], args[2]);
+              this.send(chatId, `Updating \*${args[1]}*: ${args[2]} in the environment.`);
             }
-            break;
-          default:
-            this.send(
-              chatId,
-              `I got your message \*${received.from.first_name}*, but I got nothing to say.`
-            );
+          } else {
+            this.send(chatId, `Variable \*${args[1]}* is not a valid environmental variable.`);
+          }
+          break;
+        default:
+          this.send(
+            chatId,
+            `I got your message \*${received.from.first_name}*, but I got nothing to say.`
+          );
         }
       } else {
         this.send(
