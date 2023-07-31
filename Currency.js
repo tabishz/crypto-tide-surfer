@@ -389,7 +389,7 @@ class Currency {
    * @returns
    */
   async updatePrice() {
-    this.currentPrice = await this.getPrice();
+    await this.getPrice();
     if (this.maxPrice) {
       if (this.currentPrice > this.maxPrice) {
         await this.updateTracker('sell');
@@ -511,11 +511,18 @@ class Currency {
    * @returns price of the crypto in base currency
    */
   async getPrice() {
-    let info = await axios.get(
-      `${config.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
-    );
-    this.currentPrice = parseFloat(info.data.price);
-    return this.currentPrice;
+    try {
+      let info = await axios.get(
+        `${config.priceApiUrl}/ticker/price?symbol=${this.crypto}${this.base}`
+      );
+      this.currentPrice = parseFloat(info.data.price);
+      return this.currentPrice;
+    } catch (error) {
+      this.log('Unable to get Price.', 'getPrice');
+      if (error.response) this.log(`Error Message: ${error.response.data.message}`, 'getPrice');
+      await this.delay(config.other.retryDelay);
+      return await this.getPrice();
+    }
   }
 
   /**
@@ -536,8 +543,8 @@ class Currency {
           ` Overall Change over last ${this.evalTime}*${this.evalLimit}: ` +
           `${this.overallChange} (>= ${this.minOverallChange * 100}%)`
       );
-      // conditionMet = this.buyCondition(market);
-      conditionMet = this.shouldBuy(chart);
+      conditionMet = this.buyCondition(market);
+      // conditionMet = this.shouldBuy(chart);
       if (conditionMet) return(true);
       await this.delay(this.followInterval);
     }
@@ -584,12 +591,12 @@ class Currency {
     const green_hammer = this.greenHammer(data[data.length-2]);
     const three_soldiers = this.threeSoldiers(data);
     if (this.satisfyBoth) {
-      if (green_hammer && three_soldiers) {
+      if (green_hammer && three_soldiers && this.marketChange >= this.minChange) {
         this.log('Green Hammer and Three Soldiers seen!');
         return true;
       }
     }
-    if (green_hammer || three_soldiers) {
+    if ( (green_hammer || three_soldiers) && this.marketChange >= this.minChange) {
       this.log('One of the Condition to Purchase is met!');
       return true;
     }
@@ -648,6 +655,7 @@ class Currency {
     const changeOverEvaluation =
       (data[data.length - 1][4] - data[0][1]) / data[data.length - 1][4];
     this.currentPrice = parseFloat(data[data.length - 1][4]);
+    this.marketChange = difference;
     return { change: difference, overallChange: changeOverEvaluation };
   }
 

@@ -29,6 +29,9 @@ const config = {
     wait: process.env.ORDER_WAIT,
     intervals: process.env.ORDER_INTERVALS,
   },
+  other: {
+    retryDelay: 1000,
+  },
   telegram: {
     enabled: (process.env.TELEGRAM_ENABLE == 1) ? true : false,
     token: process.env.TELEGRAM_API,
