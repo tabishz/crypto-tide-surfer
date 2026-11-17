@@ -1,5 +1,11 @@
 # Crypto Tide Surfer
 
+Crypto Tide Surfer is a Node.js automated cryptocurrency trading bot for Binance (via `ccxt` in production, or a simulated local exchange in `dev` mode). It continuously runs buy/sell cycles with a configurable cool-off period:
+
+- **Automated Trading:** Polls candlestick data to place limit buy orders when positive price-change thresholds are met, then monitors prices using a dynamic trailing stop-loss to trigger limit sell orders.
+- **Persistence:** Stores orders, trade state, runtime settings, and profit-and-loss ledger history in MongoDB.
+- **Monitoring & Control:** Provides an Express REST API to inspect orders and an optional Telegram bot for checking live status and updating trading parameters on the fly.
+
 ## PM2 Config
 For environment variables. Sample ecosystem.config.js
 
